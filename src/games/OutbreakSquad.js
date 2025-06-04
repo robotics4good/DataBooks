@@ -2,7 +2,7 @@
 import LinePlot from "../plots/LinePlot";
 import { useEffect, useState, useRef } from "react"; // useEffect for side effects (websocket setup), useState for state management (chart data), useRef for mutable references (websocket instances)
 
-const WEBSOCKET_URL = "wss://echo.websocket.org"; // UPDATE THIS TO WEBSOCKET URL -> default echo
+const WEBSOCKET_URL = "ws://localhost:8080"; // Local WebSocket server
 
 // Creating the OutbreakSquad React component
 const OutbreakSquad = () => {
@@ -41,7 +41,13 @@ const OutbreakSquad = () => {
   }, []);
 
   // Render the chart with the data
-  return <LinePlot data={data} />;
+  return (
+    <div style={{ height: "100vh", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ height: "80%", width: "80%" }}>
+        <LinePlot data={data} />
+      </div>
+    </div>
+  );
 };
 
 export default OutbreakSquad;
