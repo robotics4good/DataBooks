@@ -134,25 +134,14 @@ const OutbreakSquad = ({ sessionId }) => {
   };
 
   // RENDER: USER INTERFACE
-  // ============================================================================
-  /**
-   * Renders the game interface with:
-   * 1. Full-screen layout centered on the chart
-   * 2. Real-time line chart showing outbreak data
-   * 3. Game control buttons (End Game / Download Data)
-   * 
-   * UI STATE MANAGEMENT:
-   * - While game is active: shows "End Game" button
-   * - After game ends: shows "Download Session Data" button
-   */
   return (
     <div style={{
-      height: "100vh",           // Full viewport height
-      width: "100%",             // Full width
-      display: "flex",           // Flexbox layout
-      flexDirection: "column",   // Vertical arrangement
-      alignItems: "center",      // Center horizontally
-      justifyContent: "center"   // Center vertically
+      height: "100vh",           
+      width: "100%",            
+      display: "flex",           
+      flexDirection: "column",   
+      alignItems: "center",      
+      justifyContent: "center"   
     }}>
 
       {/* CHART CONTAINER */}
