@@ -13,7 +13,7 @@ const LandingPage = () => {
     "Rush Hour Rebels": "/games/rush-hour-rebels"
   };
 
-  return <LandingPageTemplate gameRoutes={gameRoutes} onNavigate={navigate} />;
+  return <LandingPageTemplate gameRoutes={gameRoutes} onNavigate={navigate} className="landing-bg" />;
 };
 
 export default LandingPage;

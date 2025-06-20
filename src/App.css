@@ -1,3 +1,127 @@
+:root {
+  --lavender-bg: #d6c3d6;
+  --cream-panel: #f8f3ea;
+  --offwhite-bg: #f4ede4;
+  --peach-bg: #aac6a3;
+  --accent-red: #e94f4a;
+  --dark-red: #c0392b;
+  --dimmer-red: #d35454;
+  --accent-blue: #2a6ebb;
+  --accent-green: #a6c7a1;
+  --dark-green: #4fa35e;
+  --dimmer-green: #b7d3b7;
+  --divider-green-light: #c8e6c9;
+  --divider-green-dark: #388e3c;
+  --tab-border-red: #c85762;
+  --text-dark: #222222;
+  --text-light: #fff;
+  --panel-border: #b8a9b8;
+}
+
+body, .App {
+  background: var(--lavender-bg);
+  color: var(--text-dark);
+  min-height: 100vh;
+  font-family: 'Segoe UI', 'Arial', sans-serif;
+}
+
+/* Panel/Sidebar */
+.panel, .sidebar, .left-panel {
+  background: var(--cream-panel);
+  border: 2px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(34,34,34,0.04);
+  color: var(--text-dark);
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-weight: 600;
+}
+
+/* Make sure all text on cream panels is dark and bold */
+.cream-panel, .panel, .sidebar, .left-panel, .panel *, .cream-panel *, .sidebar *, .left-panel * {
+  color: var(--text-dark) !important;
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-weight: 600;
+}
+
+/* Buttons */
+button {
+  background: var(--accent-green);
+  color: var(--text-dark);
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem 1.5rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+button:active, button:focus {
+  outline: none;
+  box-shadow: none;
+}
+button.primary {
+  background: var(--accent-blue);
+  color: var(--text-light);
+  border-radius: 8px;
+}
+button.danger {
+  background: var(--accent-red);
+  color: var(--text-light);
+  border-radius: 8px;
+}
+
+/* Tab buttons should be rectangular */
+.tab-btn {
+  border-radius: 0 !important;
+}
+
+/* Headings */
+h1, h2, h3 {
+  color: var(--accent-blue);
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-weight: 700;
+}
+
+/* Inputs/Textareas */
+input, textarea {
+  background: var(--cream-panel);
+  color: var(--text-dark);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-size: 1rem;
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-weight: 500;
+}
+
+/* Paragraphs and labels on light backgrounds */
+p, label {
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+/* Placeholder text for input and textarea */
+input::placeholder, textarea::placeholder {
+  color: var(--text-dark);
+  opacity: 1;
+  font-weight: 500;
+}
+
+/* Misc */
+::-webkit-scrollbar {
+  width: 8px;
+  background: var(--cream-panel);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 4px;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
 .App {
   text-align: center;
 }
@@ -15,13 +139,14 @@
 
 .App-header {
   background-color: #282c34;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
   color: white;
+  box-sizing: border-box;
 }
 
 .App-link {
@@ -35,4 +160,46 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* --offwhite-bg is used for the right (graph) panel background for subtle contrast with the cream panel */
+
+/* --divider-green-light is the default color for the draggable divider, --divider-green-dark is used when resizing */
+
+/* Tab header border and button separation */
+.tab-header {
+  display: flex;
+  /* border-bottom: 2px solid var(--panel-border); */
+}
+.tab-btn + .tab-btn {
+  border-left: 2px solid var(--tab-border-red);
+}
+
+/* Peach background for main page */
+.landing-bg {
+  background: var(--peach-bg) !important;
+}
+
+/* Dark green for Outbreak Squad button */
+.dark-green {
+  background: var(--dark-green) !important;
+  color: var(--text-light) !important;
+}
+
+/* Dimmer green for other main page buttons */
+.dimmer-green {
+  background: var(--dimmer-green) !important;
+  color: var(--text-dark) !important;
+}
+
+/* Dark red for Outbreak Squad button */
+.dark-red {
+  background: var(--dark-red) !important;
+  color: var(--text-light) !important;
+}
+
+/* Dimmer red for other main page buttons */
+.dimmer-red {
+  background: var(--dimmer-red) !important;
+  color: var(--text-light) !important;
 }
