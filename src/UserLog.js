@@ -16,10 +16,10 @@ export function UserLogProvider({ children }) {
     ]);
   };
 
-  const exportActions = () => {
+  const exportLog = () => {
     const csv = [
       'timestamp,type,details',
-      ...userActions.map(a => `${a.timestamp},${a.type},${a.details}`)
+      ...userActions.map(a => `"${a.timestamp}","${a.type}","${a.details}"`)
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -30,12 +30,12 @@ export function UserLogProvider({ children }) {
     URL.revokeObjectURL(url);
   };
 
-  const clearActions = () => {
+  const clearLog = () => {
     setUserActions([]);
   };
 
   return (
-    <UserLogContext.Provider value={{ userActions, logAction, exportActions, clearActions }}>
+    <UserLogContext.Provider value={{ userActions, logAction, exportLog, clearLog }}>
       {children}
     </UserLogContext.Provider>
   );

@@ -8,6 +8,7 @@
     "@nivo/heatmap": "^0.92.0",
     "@nivo/line": "^0.92.0",
     "@nivo/pie": "^0.92.0",
+    "@nivo/scatterplot": "^0.99.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",

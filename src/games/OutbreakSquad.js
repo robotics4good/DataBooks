@@ -2,25 +2,28 @@
 
 // IMPORTS & DEPENDENCIES
 import LinePlot from "../plots/LinePlot"; // Custom chart component for visualizing data
-import { useEffect, useState, useRef } from "react"; // React hooks for component lifecycle and state
+import ScatterPlot from "../plots/ScatterPlot"; // Custom chart component for visualizing data
+import { useEffect, useState, useRef, useMemo } from "react"; // React hooks for component lifecycle and state
 import { getSessionCollection, addDoc } from "../firebase"; // Firebase functions for database operations
 import { query, orderBy, onSnapshot, getDocs } from "firebase/firestore"; // Firestore query utilities
 
 // CONFIGURATION
-const WEBSOCKET_URL = "ws://localhost:8080"; // WebSocket server endpoint for real-time data
+const WEBSOCKET_URL = "ws://localhost:8081"; // WebSocket server endpoint for real-time data
 
 // @param {string} sessionId - Unique identifier for this game session (passed from parent)
-const OutbreakSquad = ({ sessionId }) => {
-  // State: chart data, game status
+const OutbreakSquad = ({ sessionId, theme }) => {
+  // State: chart data, game status, selected plot
   const [data, setData] = useState([{ id: "cases", data: [] }]); 
   const [isGameOver, setIsGameOver] = useState(false);
+  const [selectedPlot, setSelectedPlot] = useState("line");
 
   // Refs: WebSocket connection and interval timer
   const ws = useRef(null);
   const intervalRef = useRef(null);
   
-  // Firebase collection  for this specific game session
-  const sessionCollection = getSessionCollection(sessionId);
+  // Firebase collection for this specific game session
+  // Memoize the collection reference to prevent re-creation on re-renders
+  const sessionCollection = useMemo(() => getSessionCollection(sessionId), [sessionId]);
 
 
   // EFFECT 1 - REAL-TIME DATA VISUALIZATION
@@ -38,8 +41,8 @@ const OutbreakSquad = ({ sessionId }) => {
         };
       }).reverse();
       
-      // Update chart with last 20 points
-      setData([{ id: "cases", data: points.slice(-20) }]);
+      // Update chart with last 25 points
+      setData([{ id: "cases", data: points.slice(-25) }]);
     });
 
     // Unsubscribe from Firestore listener when component unmounts
@@ -144,9 +147,18 @@ const OutbreakSquad = ({ sessionId }) => {
       justifyContent: "center"   
     }}>
 
+      {/* PLOT SELECTION DROPDOWN */}
+      <div style={{ marginBottom: '1rem' }}>
+        <select className="plot-selector" value={selectedPlot} onChange={e => setSelectedPlot(e.target.value)}>
+          <option value="line">Line Plot</option>
+          <option value="scatter">Scatter Plot</option>
+        </select>
+      </div>
+
       {/* CHART CONTAINER */}
-      <div style={{ height: "80%", width: "80%" }}>
-        <LinePlot data={data} />
+      <div style={{ height: "85%", width: "95%" }}>
+        {selectedPlot === 'line' && <LinePlot data={data} theme={theme} />}
+        {selectedPlot === 'scatter' && <ScatterPlot data={data} theme={theme} />}
       </div>
 
       {/* Show "End Game" button while game is active */}
@@ -311,6 +323,7 @@ REACT HOOKS:
 - useEffect: Component lifecycle and side effects (WebSocket, Firestore listeners)
 - useState: Component state management (chart data, game status)  
 - useRef: Persistent references across renders (WebSocket, timers)
+- useMemo: Memoization for performance optimization
 
 FIREBASE:
 - getSessionCollection: Gets Firestore collection reference for session
@@ -321,9 +334,10 @@ FIREBASE:
 
 CUSTOM COMPONENTS:
 - LinePlot: Chart visualization component
+- ScatterPlot: Chart visualization component
 
 CONFIGURATION:
-- WEBSOCKET_URL: Local WebSocket server endpoint (ws://localhost:8080)
+- WEBSOCKET_URL: Local WebSocket server endpoint (ws://localhost:8081)
 
 ================================================================================
 */

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import OutbreakSquad from "./games/OutbreakSquad";
 import WhisperWeb from "./games/WhisperWeb";
@@ -7,123 +7,202 @@ import PollinationParty from "./games/PollinationParty";
 import RushHourRebels from "./games/RushHourRebels";
 import { useUserLog } from "./UserLog";
 
-const MIN_WIDTH = 0.3; // 30%
-const MAX_WIDTH = 0.7; // 70%
+const MIN_WIDTH_PERCENT = 30;
+const MAX_WIDTH_PERCENT = 50;
+
+const AutoResizingTextarea = ({ value, onChange, onBlur, ...props }) => {
+  const textareaRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'inherit';
+      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 50)}px`;
+    }
+  }, [value]);
+
+  return <textarea ref={textareaRef} value={value} onChange={onChange} onBlur={onBlur} {...props} />;
+};
+
+const QuestionBox = ({ question, index, logAction }) => {
+    const [answer, setAnswer] = useState("");
+    const handleAnswerChange = (e) => {
+        setAnswer(e.target.value);
+    };
+
+    const handleAnswerBlur = (e) => {
+        const value = e.target.value;
+        const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
+        logAction(`journal_entry`, `Question ${index + 1} word_count: ${wordCount}`);
+    };
+
+    return (
+        <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                {question}
+            </label>
+            <AutoResizingTextarea
+                placeholder="Your answer..."
+                value={answer}
+                onChange={handleAnswerChange}
+                onBlur={handleAnswerBlur}
+                style={{
+                    width: "100%",
+                    minHeight: '50px',
+                    background: "var(--cream-panel)",
+                    color: "var(--text-dark)",
+                    border: "1px solid var(--panel-border)",
+                    borderRadius: "4px",
+                    padding: "0.5rem",
+                    resize: "none",
+                    boxSizing: 'border-box',
+                    margin: 0,
+                    overflowY: 'hidden'
+                }}
+            />
+        </div>
+    );
+};
+
+const RightPanelContent = ({ gameName, theme }) => {
+  switch (gameName) {
+    case 'outbreak-squad':
+      return <OutbreakSquad theme={theme} />;
+    case 'whisper-web':
+      return <WhisperWeb />;
+    case 'logistics-league':
+      return <LogisticsLeague />;
+    case 'pollination-party':
+      return <PollinationParty />;
+    case 'rush-hour-rebels':
+      return <RushHourRebels />;
+    default:
+      return <div>Select a game</div>;
+  }
+};
 
 const GameLayout = () => {
+  const { logAction, exportLog, clearLog } = useUserLog();
   const { gameName } = useParams();
-  const [activeTab, setActiveTab] = useState('journal');
-  const [sidebarWidth, setSidebarWidth] = useState(window.innerWidth * MIN_WIDTH);
-  const dragging = useRef(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [journalText, setJournalText] = useState("");
-  const { logAction, exportActions, userActions, clearActions } = useUserLog();
   const navigate = useNavigate();
 
-  // Map game names to components
-  const gameComponents = {
-    'outbreak-squad': OutbreakSquad,
-    'whisper-web': WhisperWeb,
-    'logistics-league': LogisticsLeague,
-    'pollination-party': PollinationParty,
-    'rush-hour-rebels': RushHourRebels
+  const [leftWidth, setLeftWidth] = useState(30);
+  const [activeTab, setActiveTab] = useState('journal');
+  const [isDragging, setIsDragging] = useState(false);
+  const [notification, setNotification] = useState({ message: '', type: '' });
+  const [theme, setTheme] = useState('unity');
+
+  const questions = [
+    "What were your initial thoughts or feelings about the game when you first saw it?",
+    "Describe your strategy during the game. Did it change over time?",
+    "What was the most challenging part of the game for you?",
+    "Were there any moments that you found particularly surprising or interesting?",
+    "If you could change one thing about the game, what would it be and why?",
+    "How did this game make you think about the real-world topic it represents?",
+    "If you played before, how did this round compare to your previous experiences?",
+    "If you were a researcher, what data would you collect from this game?",
+    "What part of the game was most engaging?",
+    "What part of the game was most confusing?",
+    "How many times did you try the game?",
+    "What was your final score?",
+    "How do you think the creators of this game want you to feel?",
+    "What is the key takeaway from the game?",
+    "If you got infected, what time did it happen?",
+    "How do you think the vaccine affected the spread this time?",
+    "Is there anything else you would like to share about your experience?"
+  ];
+
+  const handleTabClick = (tabName) => {
+    if (activeTab === tabName) {
+      return;
+    }
+    logAction(`Switched to ${tabName} tab`);
+    setActiveTab(tabName);
   };
 
-  const GameComponent = gameComponents[gameName];
-
-  // Drag handlers
-  const onMouseDown = (e) => {
-    dragging.current = true;
+  const handleMouseDown = (e) => {
     setIsDragging(true);
-    document.body.style.cursor = 'col-resize';
-    // Attach listeners directly
-    const onMouseMove = (e) => {
-      if (!dragging.current) return;
-      const newWidth = Math.max(
-        window.innerWidth * MIN_WIDTH,
-        Math.min(e.clientX, window.innerWidth * MAX_WIDTH)
-      );
-      setSidebarWidth(newWidth);
+    e.preventDefault();
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    const newLeftWidth = (e.clientX / window.innerWidth) * 100;
+    const clampedWidth = Math.max(MIN_WIDTH_PERCENT, Math.min(newLeftWidth, MAX_WIDTH_PERCENT));
+    setLeftWidth(clampedWidth);
+  };
+
+  useLayoutEffect(() => {
+    const mouseMoveHandler = (e) => handleMouseMove(e);
+    const mouseUpHandler = () => handleMouseUp();
+
+    if (isDragging) {
+      window.addEventListener('mousemove', mouseMoveHandler);
+      window.addEventListener('mouseup', mouseUpHandler);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', mouseMoveHandler);
+      window.removeEventListener('mouseup', mouseUpHandler);
     };
-    const onMouseUp = () => {
-      dragging.current = false;
-      setIsDragging(false);
-      document.body.style.cursor = '';
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
+  }, [isDragging]);
 
-  if (!GameComponent) {
-    return <div>Game not found</div>;
-  }
-
-  // Logging for tab switches
-  const handleTabSwitch = (tab) => {
-    setActiveTab(tab);
-    logAction('tab_switch', `Switched to tab: ${tab}`);
-  };
-
-  // Logging for left-side button clicks (future extensibility)
-  const handleButtonClick = (label) => {
-    logAction('button_click', `Clicked button: ${label}`);
-  };
-
-  // Logging for journal textarea
-  const handleJournalFocus = () => {
-    const wordCount = journalText.trim() ? journalText.trim().split(/\s+/).length : 0;
-    logAction('journal_focus', `Journal focus (word count: ${wordCount})`);
-  };
-  const handleJournalChange = (e) => {
-    setJournalText(e.target.value);
-    const wordCount = e.target.value.trim() ? e.target.value.trim().split(/\s+/).length : 0;
-    logAction('journal_change', `Journal changed (word count: ${wordCount})`);
-  };
-
-  // Export and log so that the export action is included in the same CSV
-  const handleExportActions = () => {
-    // Log, then export after state updates (next tick)
-    logAction('export_user_actions', `Exported user actions (count: ${userActions.length + 1})`);
+  const showNotification = (message, type) => {
+    setNotification({ message, type });
     setTimeout(() => {
-      exportActions();
-    }, 0);
+      setNotification({ message: '', type: '' });
+    }, 3000);
+  };
+
+  const handleExport = () => {
+    logAction('Clicked Export button');
+    setTimeout(() => {
+      exportLog();
+      showNotification('User actions exported successfully!', 'success');
+    }, 100);
+  };
+
+  const handleErase = () => {
+    logAction('Clicked Erase All User Data button');
+    clearLog();
+    showNotification('All user data has been erased.', 'error');
   };
 
   return (
-    <div style={{ 
-      height: "100vh", 
-      display: "flex", 
-      background: "#0a0a0a",
-      color: "white"
+    <div className={`${theme}-mode`} style={{
+      height: "100vh",
+      display: "flex",
     }}>
-      {/* Left Side - Tabs */}
-      <div style={{ 
-        width: sidebarWidth, 
-        minWidth: window.innerWidth * MIN_WIDTH, 
-        maxWidth: window.innerWidth * MAX_WIDTH, 
-        background: "var(--cream-panel)",
-        display: "flex",
-        flexDirection: "column",
-        userSelect: dragging.current ? 'none' : 'auto',
-        zIndex: 1,
-        boxSizing: 'border-box',
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        padding: 0,
-        position: 'relative',
-      }}>
-        {/* Tab Headers */}
+       {notification.message && (
+        <div className={`notification ${notification.type}`}>
+          {notification.message}
+        </div>
+      )}
+      <div
+        className="left-panel"
+        style={{
+          width: `${leftWidth}%`,
+          minWidth: `${MIN_WIDTH_PERCENT}%`,
+          maxWidth: `${MAX_WIDTH_PERCENT}%`,
+          display: "flex",
+          flexDirection: "column",
+          userSelect: isDragging ? 'none' : 'auto',
+          zIndex: 1,
+          position: 'relative',
+        }}
+      >
         <div className="tab-header">
           <button
             className="tab-btn"
-            onClick={() => { handleTabSwitch('journal'); handleButtonClick('Journal Tab'); }}
+            onClick={() => handleTabClick('journal')}
             style={{
               flex: 1,
               padding: "1rem",
               background: activeTab === 'journal' ? "var(--accent-green)" : "var(--cream-panel)",
-              color: activeTab === 'journal' ? "var(--text-dark)" : "var(--text-dark)",
+              color: "var(--text-dark)",
               border: "none",
               cursor: "pointer",
               fontSize: "1.1rem"
@@ -133,12 +212,12 @@ const GameLayout = () => {
           </button>
           <button
             className="tab-btn"
-            onClick={() => { handleTabSwitch('settings'); handleButtonClick('Settings Tab'); }}
+            onClick={() => handleTabClick('settings')}
             style={{
               flex: 1,
               padding: "1rem",
               background: activeTab === 'settings' ? "var(--accent-green)" : "var(--cream-panel)",
-              color: activeTab === 'settings' ? "var(--text-dark)" : "var(--text-dark)",
+              color: "var(--text-dark)",
               border: "none",
               cursor: "pointer",
               fontSize: "1.1rem"
@@ -147,98 +226,58 @@ const GameLayout = () => {
             Settings
           </button>
         </div>
-
-        {/* Tab Content */}
-        <div style={{ 
-          flex: 1, 
-          padding: "1rem",
-          overflowY: "auto",
-          overflowX: "hidden",
-          boxSizing: 'border-box'
-        }}>
+        <div className="tab-content" style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
           {activeTab === 'journal' && (
             <div>
-              <h3>Game Journal</h3>
-              <p>Track your progress and observations here.</p>
-              <textarea
-                placeholder="Write your notes here..."
-                value={journalText}
-                onFocus={handleJournalFocus}
-                onChange={handleJournalChange}
-                style={{
-                  width: "100%",
-                  minWidth: 0,
-                  maxWidth: "100%",
-                  background: "var(--cream-panel)",
-                  color: "var(--text-dark)",
-                  border: "1px solid var(--panel-border)",
-                  borderRadius: "4px",
-                  padding: "0.5rem",
-                  resize: "none",
-                  boxSizing: 'border-box',
-                  margin: 0
-                }}
-              />
-              <button
-                onClick={handleExportActions}
-                className="primary"
-                style={{
-                  marginTop: '1rem',
-                  width: '100%',
-                  padding: '0.75rem',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Export User Actions
-              </button>
-              <button
-                onClick={clearActions}
-                className="danger"
-                style={{
-                  marginTop: '0.5rem',
-                  width: '100%',
-                  padding: '0.75rem',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Erase All User Data (Testing Only)
-              </button>
-              <div style={{ position: 'fixed', left: 0, bottom: 0, width: sidebarWidth, zIndex: 10, background: 'var(--cream-panel)', boxSizing: 'border-box', padding: '0.5rem' }}>
-                <button
-                  onClick={() => navigate('/')}
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '4px', background: 'var(--accent-blue)', color: 'var(--text-light)', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer', border: 'none', boxShadow: 'none', outline: 'none' }}
-                >
-                  Back to Game Selection
-                </button>
-              </div>
+              <h3>Journal</h3>
+              {questions.map((q, i) => (
+                <QuestionBox key={i} question={q} index={i} logAction={logAction} />
+              ))}
             </div>
           )}
           {activeTab === 'settings' && (
-            <div></div>
+            <div>
+              <h3>Settings</h3>
+              <div style={{ marginBottom: '1rem' }}>
+                <p>Color Palette</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <button onClick={() => setTheme('unity')} className={theme === 'unity' ? 'primary' : ''}>Unity Mode</button>
+                  <button onClick={() => setTheme('dark')} className={theme === 'dark' ? 'primary' : ''}>Dark Mode</button>
+                  <button onClick={() => setTheme('light')} className={theme === 'light' ? 'primary' : ''}>Light Mode</button>
+                </div>
+              </div>
+              <div style={{ marginTop: '1.5rem' }}>
+                <p>Data Management</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <button onClick={handleExport} style={{ width: '100%' }}>Export User Actions</button>
+                  <button onClick={handleErase} className="danger" style={{ width: '100%' }}>Erase All User Data</button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
-      {/* Draggable Divider */}
+
       <div
-        onMouseDown={onMouseDown}
+        className="resizer"
+        onMouseDown={handleMouseDown}
         style={{
-          width: '6px',
+          width: '8px',
           cursor: 'col-resize',
-          background: dragging.current ? 'var(--divider-green-dark)' : 'var(--divider-green-light)',
-          zIndex: 2
+          background: isDragging ? 'var(--divider-green-dark)' : 'var(--divider-green-light)',
+          zIndex: 2,
         }}
       />
-      {/* Right Side - Game Content */}
-      <div style={{ 
-        flex: 1, 
-        display: "flex",
-        flexDirection: "column",
-        userSelect: isDragging ? 'none' : 'auto',
-        background: 'var(--offwhite-bg)'
-      }}>
-        <GameComponent sessionId={`${gameName}-${Date.now()}`} />
+      <div
+        className="right-panel"
+        style={{
+          flex: 1,
+          userSelect: isDragging ? 'none' : 'auto',
+          overflow: 'hidden',
+          background: 'var(--offwhite-bg)'
+        }}
+      >
+        <RightPanelContent gameName={gameName} theme={theme} />
       </div>
     </div>
   );
