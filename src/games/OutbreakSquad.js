@@ -3,6 +3,7 @@
 // IMPORTS & DEPENDENCIES
 import LinePlot from "../plots/LinePlot"; // Custom chart component for visualizing data
 import ScatterPlot from "../plots/ScatterPlot"; // Custom chart component for visualizing data
+import PiePlot from "../plots/PiePlot"; // Custom chart component for visualizing data
 import { useEffect, useState, useRef, useMemo } from "react"; // React hooks for component lifecycle and state
 import { getSessionCollection, addDoc } from "../firebase"; // Firebase functions for database operations
 import { query, orderBy, onSnapshot, getDocs } from "firebase/firestore"; // Firestore query utilities
@@ -25,6 +26,45 @@ const OutbreakSquad = ({ sessionId, theme }) => {
   // Memoize the collection reference to prevent re-creation on re-renders
   const sessionCollection = useMemo(() => getSessionCollection(sessionId), [sessionId]);
 
+  // Transform data for pie chart format
+  const pieData = useMemo(() => {
+    if (selectedPlot !== 'pie') return [];
+    
+    // If no data available, provide default empty data structure
+    if (!data[0]?.data?.length) {
+      return [
+        { id: '0-20', label: '0-20', value: 0 },
+        { id: '21-40', label: '21-40', value: 0 },
+        { id: '41-60', label: '41-60', value: 0 },
+        { id: '61-80', label: '61-80', value: 0 },
+        { id: '81-100', label: '81-100', value: 0 }
+      ];
+    }
+    
+    // Group data points by value ranges for pie chart
+    const valueRanges = {
+      '0-20': 0,
+      '21-40': 0,
+      '41-60': 0,
+      '61-80': 0,
+      '81-100': 0
+    };
+    
+    data[0].data.forEach(point => {
+      const value = point.y;
+      if (value <= 20) valueRanges['0-20']++;
+      else if (value <= 40) valueRanges['21-40']++;
+      else if (value <= 60) valueRanges['41-60']++;
+      else if (value <= 80) valueRanges['61-80']++;
+      else valueRanges['81-100']++;
+    });
+    
+    return Object.entries(valueRanges).map(([label, value]) => ({
+      id: label,
+      label: label,
+      value: value
+    }));
+  }, [data, selectedPlot]);
 
   // EFFECT 1 - REAL-TIME DATA VISUALIZATION
   useEffect(() => {
@@ -152,13 +192,15 @@ const OutbreakSquad = ({ sessionId, theme }) => {
         <select className="plot-selector" value={selectedPlot} onChange={e => setSelectedPlot(e.target.value)}>
           <option value="line">Line Plot</option>
           <option value="scatter">Scatter Plot</option>
+          <option value="pie">Pie Plot</option>
         </select>
       </div>
 
       {/* CHART CONTAINER */}
-      <div style={{ height: "85%", width: "95%" }}>
+      <div style={{ height: "75%", width: "95%" }}>
         {selectedPlot === 'line' && <LinePlot data={data} theme={theme} />}
         {selectedPlot === 'scatter' && <ScatterPlot data={data} theme={theme} />}
+        {selectedPlot === 'pie' && <PiePlot data={pieData} theme={theme} />}
       </div>
 
       {/* Show "End Game" button while game is active */}
@@ -335,6 +377,7 @@ FIREBASE:
 CUSTOM COMPONENTS:
 - LinePlot: Chart visualization component
 - ScatterPlot: Chart visualization component
+- PiePlot: Chart visualization component
 
 CONFIGURATION:
 - WEBSOCKET_URL: Local WebSocket server endpoint (ws://localhost:8081)

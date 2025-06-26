@@ -1,6 +1,5 @@
-import { Routes, Route } from "react-router-dom";
-import LandingPage from "./LandingPage";
-import GameLayout from "./GameLayout";
+import React, { useState } from "react";
+import SingleScreenLayout from "./SingleScreenLayout";
 import { UserLogProvider } from "./UserLog";
 import "./App.css";
 
@@ -11,10 +10,7 @@ const App = () => (
         Please make your browser window larger to use the application.
       </div>
       <div className="main-content">
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/games/:gameName" element={<GameLayout />} />
-        </Routes>
+        <SingleScreenLayout />
       </div>
     </div>
   </UserLogProvider>
