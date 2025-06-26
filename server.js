@@ -1,24 +1,39 @@
-const WebSocket = require('ws');
+// server.js
+const express = require("express");
+const admin = require("firebase-admin");
+const dotenv = require("dotenv");
+dotenv.config();
 
-// Create a WebSocket server on port 8081
-const wss = new WebSocket.Server({ port: 8081 });
+const app = express();
+app.use(express.json());
 
-// Handle client connections
-wss.on('connection', (ws) => {
-    console.log('Client connected');
-
-    // Handle messages from clients
-    ws.on('message', (message) => {
-        console.log('Received:', message.toString());
-        
-        // Echo the message back to the client
-        ws.send(message.toString());
-    });
-
-    // Handle client disconnection
-    ws.on('close', () => {
-        console.log('Client disconnected');
-    });
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(), // or serviceAccount
+  databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL
 });
 
-console.log('WebSocket server running on ws://localhost:8081'); 
+const db = admin.database();
+
+app.post("/packet", async (req, res) => {
+  const { sessionId, studentId, timestamp, interaction, T_start, T_end } = req.body;
+
+  if (!sessionId || studentId === undefined || !interaction) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const ref = db.ref(`sessions/${sessionId}/devicePackets`);
+  await ref.push({
+    studentId,
+    timestamp: timestamp || Date.now(),
+    interaction,
+    T_start,
+    T_end
+  });
+
+  res.status(200).json({ success: true });
+});
+
+const PORT = 3001;
+app.listen(PORT, () => {
+  console.log(`✅ Packet server listening on port ${PORT}`);
+});
