@@ -13,9 +13,10 @@ admin.initializeApp({
 });
 
 const db = admin.database();
+const sessionId = "1234567890";
 
 app.post("/packet", async (req, res) => {
-  const { sessionId, studentId, timestamp, interaction, T_start, T_end } = req.body;
+  const {studentId, timestamp, interaction, T_start, T_end } = req.body;
 
   if (!sessionId || studentId === undefined || !interaction) {
     return res.status(400).json({ error: "Missing required fields" });
