@@ -5,11 +5,30 @@ const UserLogContext = createContext();
 export function UserLogProvider({ children }) {
   const [userActions, setUserActions] = useState([]);
 
-  const logAction = (type, details) => {
+  // For now, use a static ID (option 1: S1)
+  const userId = 'S1';
+
+  // Fetch UTC time from worldtimeapi.org (NIST/UTC)
+  async function getNistUtcTime() {
+    try {
+      const res = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
+      if (!res.ok) throw new Error('Failed to fetch time');
+      const data = await res.json();
+      return data.utc_datetime;
+    } catch (e) {
+      // Fallback to local time if API fails
+      return new Date().toISOString();
+    }
+  }
+
+  // Make logAction async to await the NIST time
+  const logAction = async (type, details) => {
+    const timestamp = await getNistUtcTime();
     setUserActions(prev => [
       ...prev,
       {
-        timestamp: new Date().toISOString(),
+        id: userId,
+        timestamp,
         type,
         details // now always a string
       }
@@ -18,8 +37,8 @@ export function UserLogProvider({ children }) {
 
   const exportLog = () => {
     const csv = [
-      'timestamp,type,details',
-      ...userActions.map(a => `"${a.timestamp}","${a.type}","${a.details}"`)
+      'id,timestamp,type,details',
+      ...userActions.map(a => `"${a.id}","${a.timestamp}","${a.type}","${a.details}"`)
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

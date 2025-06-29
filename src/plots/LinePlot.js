@@ -1,7 +1,29 @@
 // plots/line_plot.js
+import React from 'react';
 import { ResponsiveLine } from "@nivo/line";
 
-const LinePlot = ({ data, theme }) => {
+const sampleData = [
+  {
+    id: 'Series 1',
+    data: [
+      { x: 'A', y: 10 },
+      { x: 'B', y: 20 },
+      { x: 'C', y: 15 },
+      { x: 'D', y: 25 },
+    ],
+  },
+  {
+    id: 'Series 2',
+    data: [
+      { x: 'A', y: 5 },
+      { x: 'B', y: 15 },
+      { x: 'C', y: 10 },
+      { x: 'D', y: 20 },
+    ],
+  },
+];
+
+const LinePlot = ({ data = sampleData, theme }) => {
   const nivoTheme = {
     axis: {
       domain: {
@@ -37,14 +59,14 @@ const LinePlot = ({ data, theme }) => {
         data={data}
         margin={{ top: 60, right: 90, bottom: 90, left: 90 }}
         xScale={{ type: "point" }}
-        yScale={{ type: "linear", min: 0, max: 100 }}
+        yScale={{ type: "linear", min: 0, max: 30 }}
         axisBottom={{
-          legend: "Time",
+          legend: "X",
           legendOffset: 56,
           legendPosition: "middle",
           tickRotation: -45,
         }}
-        axisLeft={{ legend: "Value", legendOffset: -60, legendPosition: "middle" }}
+        axisLeft={{ legend: "Y", legendOffset: -60, legendPosition: "middle" }}
         colors={{ scheme: "category10" }}
         pointSize={10}
         pointBorderWidth={2}

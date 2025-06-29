@@ -1,7 +1,16 @@
 // plots/HeatmapPlot.js
+import React from 'react';
 import { ResponsiveHeatMap } from "@nivo/heatmap";
 
-const HeatmapPlot = ({ data, keys, indexBy }) => {
+const sampleData = [
+  { id: 'A', x1: 1, x2: 2, x3: 3 },
+  { id: 'B', x1: 4, x2: 5, x3: 6 },
+  { id: 'C', x1: 7, x2: 8, x3: 9 },
+];
+const sampleKeys = ['x1', 'x2', 'x3'];
+const sampleIndexBy = 'id';
+
+const HeatmapPlot = ({ data = sampleData, keys = sampleKeys, indexBy = sampleIndexBy }) => {
   return (
     <div style={{ height: "100%", width: "100%" }}>
       <ResponsiveHeatMap

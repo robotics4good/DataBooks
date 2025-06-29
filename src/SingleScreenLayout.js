@@ -5,7 +5,7 @@ import LogisticsLeague from "./games/LogisticsLeague";
 import PollinationParty from "./games/PollinationParty";
 import RushHourRebels from "./games/RushHourRebels";
 import { useUserLog } from "./UserLog";
-import UnifiedPlot from "./plots/UnifiedPlot";
+import PlotComponent from "./plots/PlotComponent";
 
 const MIN_WIDTH_PERCENT = 30;
 const MAX_WIDTH_PERCENT = 50;
@@ -99,16 +99,6 @@ const SingleScreenLayout = () => {
   const [plot2XVariables, setPlot2XVariables] = useState([]);
   const [plot2YVariables, setPlot2YVariables] = useState([]);
 
-  // Only allow these X/Y combinations (from the new matrix)
-  const allowedMatrix = {
-    "Time":              { "Time": false, "Tasks Completed": true,  "Meetings Held": true,  "Table Infections": true,  "Student Infections": true },
-    "Tasks Completed":   { "Time": true,  "Tasks Completed": false, "Meetings Held": true,  "Table Infections": true,  "Student Infections": true },
-    "Meetings Held":     { "Time": true,  "Tasks Completed": true,  "Meetings Held": false, "Table Infections": false, "Student Infections": false },
-    "Table Infections":  { "Time": false, "Tasks Completed": false, "Meetings Held": false, "Table Infections": false, "Student Infections": false },
-    "Student Infections":{ "Time": false, "Tasks Completed": false, "Meetings Held": false, "Table Infections": false, "Student Infections": false },
-  };
-
-  const linePlotVars = ["Time", "Tasks Completed", "Meetings Held", "Table Infections", "Student Infections"];
   // State for each plot's X/Y for line plot
   const [plot1X, setPlot1X] = useState("");
   const [plot1Y, setPlot1Y] = useState("");
@@ -188,7 +178,7 @@ const SingleScreenLayout = () => {
     if (selectedPlayer) {
       logAction(`Player logged in: ${selectedPlayer}`);
       setShowLogin(false);
-      setActiveTab('plot');
+      setActiveTab('journal');
     }
   };
 
@@ -468,9 +458,22 @@ const SingleScreenLayout = () => {
       <div style={{ flex: 1, overflow: 'auto', padding: '1rem', background: "var(--offwhite-bg)" }}>
         {activeTab === 'plot' && (
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', gap: '1rem', flex: 1, minHeight: '400px', marginBottom: '1rem' }}>
-              <UnifiedPlot plotLabel="Plot 1" theme={theme} data={[]} logAction={logAction} />
-              <UnifiedPlot plotLabel="Plot 2" theme={theme} data={[]} logAction={logAction} />
+            <div style={{
+              display: 'flex',
+              flexDirection: 'row',
+              gap: '1rem',
+              flex: 1,
+              minHeight: '400px',
+              marginBottom: '1rem',
+              width: '100%',
+              overflowX: 'auto',
+            }}>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                <PlotComponent plotLabel="Plot 1" theme={theme} data={[]} logAction={logAction} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                <PlotComponent plotLabel="Plot 2" theme={theme} data={[]} logAction={logAction} />
+              </div>
             </div>
           </div>
         )}

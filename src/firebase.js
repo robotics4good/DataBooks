@@ -20,4 +20,16 @@ const db = getDatabase(app);
 // Utility: get a ref for a specific game session
 const getSessionRef = (sessionId) => ref(db, `sessions/${sessionId}/devicePackets`);
 
-export { db, push, onValue, getSessionRef };
+// Placeholder for getSessionCollection (implement as needed)
+const getSessionCollection = (sessionId) => {
+  // TODO: Implement Firestore or Realtime DB collection logic
+  return null;
+};
+
+// Placeholder for addDoc (implement as needed)
+const addDoc = (...args) => {
+  // TODO: Implement Firestore addDoc or similar logic
+  return Promise.resolve();
+};
+
+export { db, push, onValue, getSessionRef, getSessionCollection, addDoc };
