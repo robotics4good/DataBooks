@@ -80,7 +80,7 @@ const RightPanelContent = ({ gameName, theme }) => {
   }
 };
 
-const GameLayout = () => {
+const DualScreenLayout = ({ dualScreen, setDualScreen, showLogin, setShowLogin, selectedPlayer, setSelectedPlayer, selectedGame, setSelectedGame, handleGameSelect, handleLogin, handleBackToGames, games, playerNames }) => {
   const { logAction, exportLog, clearLog } = useUserLog();
   const { gameName } = useParams();
   const navigate = useNavigate();
@@ -225,6 +225,22 @@ const GameLayout = () => {
           >
             Settings
           </button>
+          <button
+            className="tab-btn"
+            onClick={() => setDualScreen(false)}
+            style={{
+              flex: 1,
+              padding: "1rem",
+              background: "var(--cream-panel)",
+              color: "var(--text-dark)",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "1.1rem",
+              fontWeight: 600
+            }}
+          >
+            Single Screen
+          </button>
         </div>
         <div className="tab-content" style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
           {activeTab === 'journal' && (
@@ -283,4 +299,4 @@ const GameLayout = () => {
   );
 };
 
-export default GameLayout; 
+export default DualScreenLayout; 

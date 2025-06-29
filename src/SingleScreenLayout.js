@@ -82,14 +82,11 @@ const GameContent = ({ selectedGame, theme }) => {
   }
 };
 
-const SingleScreenLayout = () => {
+const SingleScreenLayout = ({ dualScreen, setDualScreen, showLogin, setShowLogin, selectedPlayer, setSelectedPlayer, selectedGame, setSelectedGame, handleGameSelect, handleLogin, handleBackToGames, games, playerNames }) => {
   const { logAction, exportLog, clearLog } = useUserLog();
-  const [selectedGame, setSelectedGame] = useState(null);
   const [activeTab, setActiveTab] = useState('plot');
   const [notification, setNotification] = useState({ message: '', type: '' });
   const [theme, setTheme] = useState('unity');
-  const [showLogin, setShowLogin] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState('');
   
   // Plot state tracking
   const [plot1Type, setPlot1Type] = useState('line');
@@ -104,29 +101,6 @@ const SingleScreenLayout = () => {
   const [plot1Y, setPlot1Y] = useState("");
   const [plot2X, setPlot2X] = useState("");
   const [plot2Y, setPlot2Y] = useState("");
-
-  const games = [
-    { name: "Outbreak Squad", key: "outbreak-squad", enabled: true },
-    { name: "Whisper Web", key: "whisper-web", enabled: false },
-    { name: "Logistics League", key: "logistics-league", enabled: false },
-    { name: "Pollination Party", key: "pollination-party", enabled: false },
-    { name: "Rush Hour Rebels", key: "rush-hour-rebels", enabled: false }
-  ];
-
-  const playerNames = [
-    "Red Fox",
-    "Blue Whale", 
-    "Green Turtle",
-    "Purple Butterfly",
-    "Orange Tiger",
-    "Yellow Lion",
-    "Pink Dolphin",
-    "Brown Bear",
-    "Black Panther",
-    "White Eagle",
-    "Gray Wolf",
-    "Golden Eagle"
-  ];
 
   // Plot types in the order and with the labels from the screenshot
   const plotTypes = [
@@ -165,30 +139,6 @@ const SingleScreenLayout = () => {
   // Person filter state (unique per plot, decorative for now)
   const [plot1PersonFilter, setPlot1PersonFilter] = useState(playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
   const [plot2PersonFilter, setPlot2PersonFilter] = useState(playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
-
-  const handleGameSelect = (game) => {
-    if (game.enabled) {
-      logAction(`Selected game: ${game.name}`);
-      setSelectedGame(game.key);
-      setShowLogin(true);
-    }
-  };
-
-  const handleLogin = () => {
-    if (selectedPlayer) {
-      logAction(`Player logged in: ${selectedPlayer}`);
-      setShowLogin(false);
-      setActiveTab('journal');
-    }
-  };
-
-  const handleBackToGames = () => {
-    logAction('Clicked back to games');
-    setSelectedGame(null);
-    setShowLogin(false);
-    setSelectedPlayer('');
-    setActiveTab('plot');
-  };
 
   const handleTabClick = (tabName) => {
     if (activeTab === tabName) {
@@ -280,7 +230,7 @@ const SingleScreenLayout = () => {
           {games.map((game) => (
             <button
               key={game.key}
-              onClick={() => handleGameSelect(game)}
+              onClick={() => handleGameSelect(game, logAction)}
               className={game.enabled ? "dark-red" : "dimmer-red"}
               style={{
                 fontSize: "1.5rem",
@@ -364,7 +314,7 @@ const SingleScreenLayout = () => {
               Cancel
             </button>
             <button
-              onClick={handleLogin}
+              onClick={() => handleLogin(logAction) || setActiveTab('journal')}
               disabled={!selectedPlayer}
               style={{
                 padding: "0.8rem 1.5rem",
@@ -450,6 +400,21 @@ const SingleScreenLayout = () => {
             }}
           >
             Settings
+          </button>
+          <button
+            onClick={() => setDualScreen(true)}
+            style={{
+              flex: 1,
+              padding: "1rem",
+              background: "var(--cream-panel)",
+              color: "var(--text-dark)",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "1.1rem",
+              fontWeight: 600
+            }}
+          >
+            Dual Screen
           </button>
         </div>
       </div>
