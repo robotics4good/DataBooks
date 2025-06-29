@@ -82,7 +82,7 @@ const GameContent = ({ selectedGame, theme }) => {
   }
 };
 
-const SingleScreenLayout = ({ dualScreen, setDualScreen, showLogin, setShowLogin, selectedPlayer, setSelectedPlayer, selectedGame, setSelectedGame, handleGameSelect, handleLogin, handleBackToGames, games, playerNames }) => {
+const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
   const { logAction, exportLog, clearLog } = useUserLog();
   const [activeTab, setActiveTab] = useState('plot');
   const [notification, setNotification] = useState({ message: '', type: '' });
@@ -208,134 +208,6 @@ const SingleScreenLayout = ({ dualScreen, setDualScreen, showLogin, setShowLogin
     showNotification('All user data has been erased.', 'error');
   };
 
-  // Show game selection screen
-  if (!selectedGame) {
-    return (
-      <div className={`${theme}-mode`} style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--offwhite-bg)"
-      }}>
-        {notification.message && (
-          <div className={`notification ${notification.type}`}>
-            {notification.message}
-          </div>
-        )}
-        
-        <h1 style={{ fontSize: "4rem", marginBottom: "2rem", color: "var(--text-dark)" }}>DataOrganisms</h1>
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {games.map((game) => (
-            <button
-              key={game.key}
-              onClick={() => handleGameSelect(game, logAction)}
-              className={game.enabled ? "dark-red" : "dimmer-red"}
-              style={{
-                fontSize: "1.5rem",
-                padding: "0.8rem 1.5rem",
-                cursor: game.enabled ? "pointer" : "not-allowed",
-                opacity: game.enabled ? 1 : 0.5,
-                borderRadius: "8px",
-                border: "none"
-              }}
-            >
-              {game.name}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Show login screen
-  if (showLogin) {
-    return (
-      <div className={`${theme}-mode`} style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--offwhite-bg)"
-      }}>
-        {notification.message && (
-          <div className={`notification ${notification.type}`}>
-            {notification.message}
-          </div>
-        )}
-        
-        <div style={{
-          background: "var(--cream-panel)",
-          padding: "2rem",
-          borderRadius: "8px",
-          border: "2px solid var(--divider-green-light)",
-          minWidth: "300px",
-          textAlign: "center"
-        }}>
-          <h2 style={{ marginBottom: "1.5rem", color: "var(--text-dark)" }}>Select Your Player</h2>
-          <select
-            value={selectedPlayer}
-            onChange={(e) => setSelectedPlayer(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "0.8rem",
-              fontSize: "1.1rem",
-              background: "var(--offwhite-bg)",
-              color: "var(--text-dark)",
-              border: "1px solid var(--panel-border)",
-              borderRadius: "4px",
-              marginBottom: "1.5rem"
-            }}
-          >
-            <option value="">Choose a player...</option>
-            {playerNames.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-          <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
-            <button
-              onClick={() => {
-                setShowLogin(false);
-                setSelectedGame(null);
-                setSelectedPlayer('');
-              }}
-              style={{
-                padding: "0.8rem 1.5rem",
-                background: "var(--dimmer-red)",
-                color: "var(--text-light)",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "1rem"
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => handleLogin(logAction) || setActiveTab('journal')}
-              disabled={!selectedPlayer}
-              style={{
-                padding: "0.8rem 1.5rem",
-                background: selectedPlayer ? "var(--accent-green)" : "var(--dimmer-green)",
-                color: "var(--text-dark)",
-                border: "none",
-                borderRadius: "8px",
-                cursor: selectedPlayer ? "pointer" : "not-allowed",
-                fontSize: "1rem",
-                opacity: selectedPlayer ? 1 : 0.6
-              }}
-            >
-              Start Game
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show game content with tabs
   return (
     <div className={`${theme}-mode`} style={{
       height: "100vh",
@@ -348,133 +220,182 @@ const SingleScreenLayout = ({ dualScreen, setDualScreen, showLogin, setShowLogin
           {notification.message}
         </div>
       )}
-      
-      {/* Header with tabs */}
+
+      {/* Tab Header */}
       <div style={{
-        padding: "1rem",
-        background: "var(--cream-panel)",
-        borderBottom: "2px solid var(--divider-green-light)",
         display: "flex",
-        alignItems: "center",
-        gap: "1rem"
+        background: "var(--cream-panel)",
+        borderBottom: "2px solid var(--panel-border)",
+        padding: "0 20px"
       }}>
-        <div style={{ flex: 1, display: "flex", gap: "0.5rem" }}>
-          <button
-            onClick={() => handleTabClick('plot')}
-            style={{
-              flex: 1,
-              padding: "1rem",
-              background: activeTab === 'plot' ? "var(--accent-green)" : "var(--cream-panel)",
-              color: "var(--text-dark)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "1.1rem"
-            }}
-          >
-            Plot
-          </button>
-          <button
-            onClick={() => handleTabClick('journal')}
-            style={{
-              flex: 1,
-              padding: "1rem",
-              background: activeTab === 'journal' ? "var(--accent-green)" : "var(--cream-panel)",
-              color: "var(--text-dark)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "1.1rem"
-            }}
-          >
-            Journal
-          </button>
-          <button
-            onClick={() => handleTabClick('settings')}
-            style={{
-              flex: 1,
-              padding: "1rem",
-              background: activeTab === 'settings' ? "var(--accent-green)" : "var(--cream-panel)",
-              color: "var(--text-dark)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "1.1rem"
-            }}
-          >
-            Settings
-          </button>
-          <button
-            onClick={() => setDualScreen(true)}
-            style={{
-              flex: 1,
-              padding: "1rem",
-              background: "var(--cream-panel)",
-              color: "var(--text-dark)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "1.1rem",
-              fontWeight: 600
-            }}
-          >
-            Dual Screen
-          </button>
-        </div>
+        <button
+          onClick={() => handleTabClick('plot')}
+          style={{
+            padding: "15px 20px",
+            border: "none",
+            background: activeTab === 'plot' ? "var(--accent-color)" : "transparent",
+            color: activeTab === 'plot' ? "white" : "var(--text-dark)",
+            cursor: "pointer",
+            fontSize: "1rem",
+            fontWeight: "bold",
+            borderBottom: activeTab === 'plot' ? "3px solid var(--accent-color)" : "none"
+          }}
+        >
+          Plot
+        </button>
+        <button
+          onClick={() => handleTabClick('journal')}
+          style={{
+            padding: "15px 20px",
+            border: "none",
+            background: activeTab === 'journal' ? "var(--accent-color)" : "transparent",
+            color: activeTab === 'journal' ? "white" : "var(--text-dark)",
+            cursor: "pointer",
+            fontSize: "1rem",
+            fontWeight: "bold",
+            borderBottom: activeTab === 'journal' ? "3px solid var(--accent-color)" : "none"
+          }}
+        >
+          Journal
+        </button>
+        <button
+          onClick={() => handleTabClick('settings')}
+          style={{
+            padding: "15px 20px",
+            border: "none",
+            background: activeTab === 'settings' ? "var(--accent-color)" : "transparent",
+            color: activeTab === 'settings' ? "white" : "var(--text-dark)",
+            cursor: "pointer",
+            fontSize: "1rem",
+            fontWeight: "bold",
+            borderBottom: activeTab === 'settings' ? "3px solid var(--accent-color)" : "none"
+          }}
+        >
+          Settings
+        </button>
       </div>
 
-      {/* Full screen content area */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '1rem', background: "var(--offwhite-bg)" }}>
+      {/* Content Area */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {activeTab === 'plot' && (
-          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: '1rem',
-              flex: 1,
-              minHeight: '400px',
-              marginBottom: '1rem',
-              width: '100%',
-              overflowX: 'auto',
-            }}>
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                <PlotComponent plotLabel="Plot 1" theme={theme} data={[]} logAction={logAction} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                <PlotComponent plotLabel="Plot 2" theme={theme} data={[]} logAction={logAction} />
-              </div>
+          <div style={{
+            flex: 1,
+            minHeight: 0,
+            height: '100%',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'row',
+            gap: '20px',
+            padding: '20px'
+          }}>
+            {/* Plot 1 */}
+            <div style={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <PlotComponent
+                plotLabel="Plot 1"
+                theme={theme}
+                playerNames={playerNames}
+                // Each PlotComponent manages its own state
+              />
+            </div>
+            {/* Plot 2 */}
+            <div style={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <PlotComponent
+                plotLabel="Plot 2"
+                theme={theme}
+                playerNames={playerNames}
+                // Each PlotComponent manages its own state
+              />
             </div>
           </div>
         )}
+
         {activeTab === 'journal' && (
-          <div>
-            <h3>Journal</h3>
-            {questions.map((q, i) => (
-              <QuestionBox key={i} question={q} index={i} logAction={logAction} />
-            ))}
+          <div style={{
+            height: "100%",
+            padding: "20px",
+            overflow: "auto"
+          }}>
+            <div style={{
+              background: "var(--cream-panel)",
+              borderRadius: "8px",
+              padding: "20px",
+              border: "1px solid var(--panel-border)"
+            }}>
+              <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Reflection Journal</h3>
+              {questions.map((question, index) => (
+                <QuestionBox
+                  key={index}
+                  question={question}
+                  index={index}
+                  logAction={logAction}
+                />
+              ))}
+            </div>
           </div>
         )}
+
         {activeTab === 'settings' && (
-          <div>
-            <h3>Settings</h3>
-            <div style={{ marginBottom: '1rem' }}>
-              <p>Current Player: <strong>{selectedPlayer}</strong></p>
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <p>Color Palette</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <button onClick={() => setTheme('unity')} className={theme === 'unity' ? 'primary' : ''}>Unity Mode</button>
-                <button onClick={() => setTheme('dark')} className={theme === 'dark' ? 'primary' : ''}>Dark Mode</button>
-                <button onClick={() => setTheme('light')} className={theme === 'light' ? 'primary' : ''}>Light Mode</button>
+          <div style={{
+            height: "100%",
+            padding: "20px",
+            overflow: "auto"
+          }}>
+            <div style={{
+              background: "var(--cream-panel)",
+              borderRadius: "8px",
+              padding: "20px",
+              border: "1px solid var(--panel-border)"
+            }}>
+              <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Settings</h3>
+              
+              <div style={{ marginBottom: "20px" }}>
+                <h4 style={{ marginBottom: "10px", color: "var(--text-dark)" }}>Theme</h4>
+                <select
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  style={{
+                    padding: "8px",
+                    borderRadius: "4px",
+                    border: "1px solid var(--panel-border)",
+                    background: "white"
+                  }}
+                >
+                  <option value="unity">Unity</option>
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
               </div>
-            </div>
-            <div style={{ marginTop: '1.5rem' }}>
-              <p>Data Management</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <button onClick={handleExport} style={{ width: '100%' }}>Export User Actions</button>
-                <button onClick={handleErase} className="danger" style={{ width: '100%' }}>Erase All User Data</button>
-              </div>
-            </div>
-            <div style={{ marginTop: '1.5rem' }}>
-              <p>Navigation</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <button onClick={handleBackToGames} style={{ width: '100%' }}>← Back to Games</button>
+
+              <div style={{ marginBottom: "20px" }}>
+                <h4 style={{ marginBottom: "10px", color: "var(--text-dark)" }}>Data Management</h4>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    onClick={handleExport}
+                    style={{
+                      padding: "10px 20px",
+                      background: "var(--accent-color)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Export Data
+                  </button>
+                  <button
+                    onClick={handleErase}
+                    style={{
+                      padding: "10px 20px",
+                      background: "#dc3545",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Erase All Data
+                  </button>
+                </div>
               </div>
             </div>
           </div>

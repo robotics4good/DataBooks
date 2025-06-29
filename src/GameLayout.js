@@ -1,10 +1,10 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import OutbreakSquad from "./games/OutbreakSquad";
 import WhisperWeb from "./games/WhisperWeb";
 import LogisticsLeague from "./games/LogisticsLeague";
 import PollinationParty from "./games/PollinationParty";
 import RushHourRebels from "./games/RushHourRebels";
+import PlotComponent from "./plots/PlotComponent";
 import { useUserLog } from "./UserLog";
 
 const MIN_WIDTH_PERCENT = 30;
@@ -63,8 +63,8 @@ const QuestionBox = ({ question, index, logAction }) => {
     );
 };
 
-const RightPanelContent = ({ gameName, theme }) => {
-  switch (gameName) {
+const RightPanelContent = ({ selectedGame, theme }) => {
+  switch (selectedGame) {
     case 'outbreak-squad':
       return <OutbreakSquad theme={theme} />;
     case 'whisper-web':
@@ -76,20 +76,25 @@ const RightPanelContent = ({ gameName, theme }) => {
     case 'rush-hour-rebels':
       return <RushHourRebels />;
     default:
-      return <div>Select a game</div>;
+      return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '1.2rem' }}>
+        Select a game to begin
+      </div>;
   }
 };
 
-const DualScreenLayout = ({ dualScreen, setDualScreen, showLogin, setShowLogin, selectedPlayer, setSelectedPlayer, selectedGame, setSelectedGame, handleGameSelect, handleLogin, handleBackToGames, games, playerNames }) => {
+const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
   const { logAction, exportLog, clearLog } = useUserLog();
-  const { gameName } = useParams();
-  const navigate = useNavigate();
 
   const [leftWidth, setLeftWidth] = useState(30);
   const [activeTab, setActiveTab] = useState('journal');
   const [isDragging, setIsDragging] = useState(false);
   const [notification, setNotification] = useState({ message: '', type: '' });
   const [theme, setTheme] = useState('unity');
+
+  // Plot state for the right panel
+  const [plotType, setPlotType] = useState('line');
+  const [xVariable, setXVariable] = useState('Time');
+  const [yVariable, setYVariable] = useState('Infections');
 
   const questions = [
     "What were your initial thoughts or feelings about the game when you first saw it?",
@@ -225,22 +230,6 @@ const DualScreenLayout = ({ dualScreen, setDualScreen, showLogin, setShowLogin, 
           >
             Settings
           </button>
-          <button
-            className="tab-btn"
-            onClick={() => setDualScreen(false)}
-            style={{
-              flex: 1,
-              padding: "1rem",
-              background: "var(--cream-panel)",
-              color: "var(--text-dark)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "1.1rem",
-              fontWeight: 600
-            }}
-          >
-            Single Screen
-          </button>
         </div>
         <div className="tab-content" style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
           {activeTab === 'journal' && (
@@ -273,27 +262,46 @@ const DualScreenLayout = ({ dualScreen, setDualScreen, showLogin, setShowLogin, 
           )}
         </div>
       </div>
-
+      
+      {/* Resizer */}
       <div
-        className="resizer"
-        onMouseDown={handleMouseDown}
         style={{
-          width: '8px',
+          width: '4px',
+          background: 'var(--panel-border)',
           cursor: 'col-resize',
-          background: isDragging ? 'var(--divider-green-dark)' : 'var(--divider-green-light)',
-          zIndex: 2,
+          position: 'relative'
         }}
-      />
+        onMouseDown={handleMouseDown}
+      >
+        <div style={{
+          position: 'absolute',
+          left: '-2px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '8px',
+          height: '40px',
+          background: 'var(--accent-color)',
+          borderRadius: '4px'
+        }} />
+      </div>
+
+      {/* Right Panel: Show PlotComponent */}
       <div
         className="right-panel"
         style={{
           flex: 1,
-          userSelect: isDragging ? 'none' : 'auto',
-          overflow: 'hidden',
-          background: 'var(--offwhite-bg)'
+          display: "flex",
+          flexDirection: "column",
+          background: "var(--offwhite-bg)"
         }}
       >
-        <RightPanelContent gameName={gameName} theme={theme} />
+        <PlotComponent
+          plotType={plotType}
+          xVariable={xVariable}
+          yVariable={yVariable}
+          playerNames={playerNames}
+          // Add more props as needed
+        />
       </div>
     </div>
   );
