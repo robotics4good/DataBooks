@@ -1,58 +1,119 @@
-import { useEffect, useState, useRef } from "react";
-import LinePlot from "./plots/LinePlot"; // adjust path if needed
-
-const WEBSOCKET_URL = "wss://echo.websocket.org"; // <-- Replace this
+import React, { useState } from "react";
+import { useParams, useNavigate, Navigate } from "react-router-dom";
+import SingleScreenLayout from "./SingleScreenLayout";
+import DualScreenLayout from "./GameLayout";
+import { useUserLog } from "./UserLog";
 
 const GamePage = () => {
-  const [data, setData] = useState([{ id: "series1", data: [] }]);
-  const ws = useRef(null);
+  const { gameKey } = useParams();
+  const navigate = useNavigate();
+  const { logAction } = useUserLog();
+  const [dualScreen, setDualScreen] = useState(false);
 
-  useEffect(() => {
-    ws.current = new WebSocket(WEBSOCKET_URL);
+  const games = [
+    { name: "Outbreak Squad", key: "outbreak-squad", enabled: true },
+    { name: "Whisper Web", key: "whisper-web", enabled: false },
+    { name: "Logistics League", key: "logistics-league", enabled: false },
+    { name: "Pollination Party", key: "pollination-party", enabled: false },
+    { name: "Rush Hour Rebels", key: "rush-hour-rebels", enabled: false }
+  ];
 
-    ws.current.onopen = () => {
-      console.log("WebSocket connection opened!");
-      setInterval(() => {
-        ws.current.send(JSON.stringify({ value: Math.floor(Math.random() * 100) }));
-      }, 1000);
-    };
+  const playerNames = [
+    "Red Fox",
+    "Blue Whale", 
+    "Green Turtle",
+    "Purple Butterfly",
+    "Orange Tiger",
+    "Yellow Lion",
+    "Pink Dolphin",
+    "Brown Bear",
+    "Black Panther",
+    "White Eagle",
+    "Gray Wolf",
+    "Golden Eagle"
+  ];
 
-    ws.current.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.value !== undefined) {
-          setData(prevData =>
-            prevData.map(series => ({
-              ...series,
-              data: [
-                ...series.data.slice(-19),
-                { x: new Date().toLocaleTimeString(), y: message.value }
-              ]
-            }))
-          );
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
-      }
-    };
+  const game = games.find(g => g.key === gameKey);
+  
+  if (!game || !game.enabled) {
+    return <Navigate to="/" replace />;
+  }
 
-    ws.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
+  const handleBackToGames = () => {
+    logAction('Clicked back to games');
+    navigate('/');
+  };
 
-    ws.current.onclose = () => {
-      console.log("WebSocket connection closed.");
-    };
-
-    return () => {
-      ws.current.close();
-    };
-  }, []);
+  const handleToggleLayout = () => {
+    const newLayout = !dualScreen;
+    setDualScreen(newLayout);
+    logAction(`Switched to ${newLayout ? 'dual' : 'single'} screen layout`);
+  };
 
   return (
-    <div style={{ height: "100vh", background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ height: "80%", width: "80%" }}>
-        <LinePlot data={data} />
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* Layout Toggle Bar */}
+      <div style={{
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        padding: "10px 20px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        color: "white",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <button
+            onClick={handleBackToGames}
+            style={{
+              background: "rgba(255,255,255,0.2)",
+              border: "none",
+              color: "white",
+              padding: "8px 16px",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontSize: "0.9rem"
+            }}
+          >
+            ← Back to Games
+          </button>
+          <span style={{ fontSize: "1.2rem", fontWeight: "bold" }}>
+            {game.name}
+          </span>
+        </div>
+        
+        <button
+          onClick={handleToggleLayout}
+          style={{
+            background: "rgba(255,255,255,0.2)",
+            border: "none",
+            color: "white",
+            padding: "8px 16px",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontSize: "0.9rem",
+            fontWeight: "bold"
+          }}
+        >
+          {dualScreen ? "Single Screen" : "Dual Screen"}
+        </button>
+      </div>
+
+      {/* Game Content */}
+      <div style={{ flex: 1, overflow: "hidden" }}>
+        {dualScreen ? (
+          <DualScreenLayout
+            selectedGame={gameKey}
+            handleBackToGames={handleBackToGames}
+            playerNames={playerNames}
+          />
+        ) : (
+          <SingleScreenLayout
+            selectedGame={gameKey}
+            handleBackToGames={handleBackToGames}
+            playerNames={playerNames}
+          />
+        )}
       </div>
     </div>
   );

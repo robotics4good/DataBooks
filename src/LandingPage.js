@@ -1,19 +1,29 @@
 // src/LandingPage.js
 import { useNavigate } from "react-router-dom";
 import LandingPageTemplate from "./templates/LandingPageTemplate";
+import { useUserLog } from "./UserLog";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { logAction } = useUserLog();
 
   const gameRoutes = {
-    "Outbreak Squad": "/games/outbreak-squad",
-    "Whisper Web": "/games/whisper-web",
-    "Logistics League": "/games/logistics-league",
-    "Pollination Party": "/games/pollination-party",
-    "Rush Hour Rebels": "/games/rush-hour-rebels"
+    "Outbreak Squad": "/login/outbreak-squad",
+    "Whisper Web": "/login/whisper-web",
+    "Logistics League": "/login/logistics-league",
+    "Pollination Party": "/login/pollination-party",
+    "Rush Hour Rebels": "/login/rush-hour-rebels"
   };
 
-  return <LandingPageTemplate gameRoutes={gameRoutes} onNavigate={navigate} className="landing-bg" />;
+  const handleGameSelect = (route) => {
+    const gameName = Object.keys(gameRoutes).find(key => gameRoutes[key] === route);
+    if (gameName) {
+      logAction(`Selected game: ${gameName}`);
+    }
+    navigate(route);
+  };
+
+  return <LandingPageTemplate gameRoutes={gameRoutes} onNavigate={handleGameSelect} className="landing-bg" />;
 };
 
 export default LandingPage;

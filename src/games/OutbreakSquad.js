@@ -26,52 +26,10 @@ const OutbreakSquad = ({ sessionId, theme }) => {
   // Memoize the collection reference to prevent re-creation on re-renders
   const sessionCollection = useMemo(() => getSessionCollection(sessionId), [sessionId]);
 
-  // Transform data for pie chart format
-  const pieData = useMemo(() => {
-    if (selectedPlot !== 'pie') return [];
-    
-    // If no data available, provide default empty data structure
-    if (!data[0]?.data?.length) {
-      return [
-        { id: '0-20', label: '0-20', value: 0 },
-        { id: '21-40', label: '21-40', value: 0 },
-        { id: '41-60', label: '41-60', value: 0 },
-        { id: '61-80', label: '61-80', value: 0 },
-        { id: '81-100', label: '81-100', value: 0 }
-      ];
-    }
-    
-    // Group data points by value ranges for pie chart
-    const valueRanges = {
-      '0-20': 0,
-      '21-40': 0,
-      '41-60': 0,
-      '61-80': 0,
-      '81-100': 0
-    };
-    
-    data[0].data.forEach(point => {
-      const value = point.y;
-      if (value <= 20) valueRanges['0-20']++;
-      else if (value <= 40) valueRanges['21-40']++;
-      else if (value <= 60) valueRanges['41-60']++;
-      else if (value <= 80) valueRanges['61-80']++;
-      else valueRanges['81-100']++;
-    });
-    
-    return Object.entries(valueRanges).map(([label, value]) => ({
-      id: label,
-      label: label,
-      value: value
-    }));
-  }, [data, selectedPlot]);
-
   // EFFECT 1 - REAL-TIME DATA VISUALIZATION
   useEffect(() => {
-    // Create Firestore query
+    if (!sessionCollection) return; // Defensive guard
     const q = query(sessionCollection, orderBy("timestamp", "desc"));
-    
-    // Set up real-time listener, runs every time data changes in Firestore
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const points = snapshot.docs.map(doc => {
         const d = doc.data(); 
@@ -80,19 +38,14 @@ const OutbreakSquad = ({ sessionId, theme }) => {
           y: d.value
         };
       }).reverse();
-      
-      // Update chart with last 25 points
       setData([{ id: "cases", data: points.slice(-25) }]);
     });
-
-    // Unsubscribe from Firestore listener when component unmounts
     return () => unsubscribe();
-  }, [sessionCollection]); // Re-run if sessionCollection changes
-
-
+  }, [sessionCollection]);
 
   // EFFECT 2: WEBSOCKET CONNECTION & DATA GENERATION
   useEffect(() => {
+    if (!sessionCollection || isGameOver) return;
     ws.current = new WebSocket(WEBSOCKET_URL);
 
     // WebSocket connection established successfully, start the data generation process
@@ -109,7 +62,6 @@ const OutbreakSquad = ({ sessionId, theme }) => {
         }
       }, 1000); // Send every 1000ms
     };
-
 
     // Handle incoming messages from WebSocket server
     ws.current.onmessage = async (event) => {
@@ -142,39 +94,68 @@ const OutbreakSquad = ({ sessionId, theme }) => {
     };
   }, [sessionCollection, isGameOver]); // Re-run if session or game state changes
 
-
-
   // FUNCTION: DATA EXPORT
   const downloadData = async () => {
+    if (!sessionCollection) return; // Defensive guard
     try {
-      // Get ALL session data from Firestore, ordered chronologically
       const snapshot = await getDocs(query(sessionCollection, orderBy("timestamp")));
       const allData = snapshot.docs.map(doc => doc.data());
-
-      // Create CSV  with header row and data rows
       const csv = [
-        "timestamp,value,source", // CSV header
+        "timestamp,value,source",
         ...allData.map(d =>
           `${new Date(d.timestamp).toISOString()},${d.value},${d.source}`
         )
       ].join("\n"); 
-
-      // Create downloadable file blob
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
-      
-      // Trigger download
       const link = document.createElement("a");
       link.href = url;
-      link.download = `OutbreakSquad-${sessionId}.csv`; // Unique filename per session
+      link.download = `OutbreakSquad-${sessionId}.csv`;
       link.click();
-      
-      // Clean up the temporary URL
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading data:", error);
     }
   };
+
+  // Transform data for pie chart format
+  const pieData = useMemo(() => {
+    if (selectedPlot !== 'pie') return [];
+    if (!data[0]?.data?.length) {
+      return [
+        { id: '0-20', label: '0-20', value: 0 },
+        { id: '21-40', label: '21-40', value: 0 },
+        { id: '41-60', label: '41-60', value: 0 },
+        { id: '61-80', label: '61-80', value: 0 },
+        { id: '81-100', label: '81-100', value: 0 }
+      ];
+    }
+    const valueRanges = {
+      '0-20': 0,
+      '21-40': 0,
+      '41-60': 0,
+      '61-80': 0,
+      '81-100': 0
+    };
+    data[0].data.forEach(point => {
+      const value = point.y;
+      if (value <= 20) valueRanges['0-20']++;
+      else if (value <= 40) valueRanges['21-40']++;
+      else if (value <= 60) valueRanges['41-60']++;
+      else if (value <= 80) valueRanges['61-80']++;
+      else valueRanges['81-100']++;
+    });
+    return Object.entries(valueRanges).map(([label, value]) => ({
+      id: label,
+      label: label,
+      value: value
+    }));
+  }, [data, selectedPlot]);
+
+  // Only render error message after all hooks
+  if (!sessionId) {
+    return <div style={{ padding: 32, color: '#b00', fontWeight: 'bold' }}>No session ID provided. Please start a new game session.</div>;
+  }
 
   // RENDER: USER INTERFACE
   return (
