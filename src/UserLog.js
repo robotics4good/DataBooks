@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import { db, ref, push } from "./firebase";
 
 const UserLogContext = createContext();
 
@@ -24,16 +25,29 @@ export function UserLogProvider({ children }) {
   // Make logAction async to await the NIST time
   const logAction = async (type, details) => {
     const timestamp = await getNistUtcTime();
+    const cleanDetails = details ?? "";
     setUserActions(prev => [
       ...prev,
       {
         id: userId,
         timestamp,
         type,
-        details // now always a string
+        details: cleanDetails // now always a string
       }
     ]);
+
+    const action = {
+      id: userId,
+      timestamp,
+      type,
+      details: cleanDetails
+    };
+    const userActivityRef = ref(db, `userActivity`);
+    push(userActivityRef, action);
+  
+    console.log("🔥 Logged locally & sent to Firebase:", action);
   };
+
 
   const exportLog = () => {
     const csv = [
