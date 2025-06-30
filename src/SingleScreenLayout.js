@@ -83,7 +83,7 @@ const GameContent = ({ selectedGame, theme }) => {
 };
 
 const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
-  const { logAction, exportLog, clearLog } = useUserLog();
+  const { logAction, exportLog, clearLog, exportLogAsJson } = useUserLog();
   const [activeTab, setActiveTab] = useState('plot');
   const [notification, setNotification] = useState({ message: '', type: '' });
   const [theme, setTheme] = useState('unity');
@@ -210,7 +210,6 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
 
   return (
     <div className={`${theme}-mode`} style={{
-      height: "100vh",
       display: "flex",
       flexDirection: "column",
       background: "var(--offwhite-bg)"
@@ -220,185 +219,188 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
           {notification.message}
         </div>
       )}
-
       {/* Tab Header */}
       <div style={{
         display: "flex",
         background: "var(--cream-panel)",
-        borderBottom: "2px solid var(--panel-border)",
-        padding: "0 20px"
+        borderBottom: "1.5px solid var(--panel-border)",
+        padding: "0 8px",
+        height: 44,
+        alignItems: 'flex-end',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
       }}>
         <button
-          onClick={() => handleTabClick('plot')}
+          onClick={() => setActiveTab('plot')}
           style={{
-            padding: "15px 20px",
+            padding: "0 18px",
+            height: 40,
             border: "none",
-            background: activeTab === 'plot' ? "var(--accent-color)" : "transparent",
-            color: activeTab === 'plot' ? "white" : "var(--text-dark)",
+            background: "none",
+            color: activeTab === 'plot' ? "var(--accent-color)" : "var(--text-dark)",
             cursor: "pointer",
             fontSize: "1rem",
-            fontWeight: "bold",
-            borderBottom: activeTab === 'plot' ? "3px solid var(--accent-color)" : "none"
+            fontWeight: activeTab === 'plot' ? 700 : 500,
+            borderBottom: activeTab === 'plot' ? "3px solid var(--accent-color)" : "3px solid transparent",
+            transition: 'color 0.2s, border-bottom 0.2s',
+            outline: 'none',
+            marginRight: 8,
+            backgroundColor: 'transparent',
+            borderRadius: '6px 6px 0 0',
           }}
         >
           Plot
         </button>
         <button
-          onClick={() => handleTabClick('journal')}
+          onClick={() => setActiveTab('journal')}
           style={{
-            padding: "15px 20px",
+            padding: "0 18px",
+            height: 40,
             border: "none",
-            background: activeTab === 'journal' ? "var(--accent-color)" : "transparent",
-            color: activeTab === 'journal' ? "white" : "var(--text-dark)",
+            background: "none",
+            color: activeTab === 'journal' ? "var(--accent-color)" : "var(--text-dark)",
             cursor: "pointer",
             fontSize: "1rem",
-            fontWeight: "bold",
-            borderBottom: activeTab === 'journal' ? "3px solid var(--accent-color)" : "none"
+            fontWeight: activeTab === 'journal' ? 700 : 500,
+            borderBottom: activeTab === 'journal' ? "3px solid var(--accent-color)" : "3px solid transparent",
+            transition: 'color 0.2s, border-bottom 0.2s',
+            outline: 'none',
+            marginRight: 8,
+            backgroundColor: 'transparent',
+            borderRadius: '6px 6px 0 0',
           }}
         >
           Journal
         </button>
         <button
-          onClick={() => handleTabClick('settings')}
+          onClick={() => setActiveTab('settings')}
           style={{
-            padding: "15px 20px",
+            padding: "0 18px",
+            height: 40,
             border: "none",
-            background: activeTab === 'settings' ? "var(--accent-color)" : "transparent",
-            color: activeTab === 'settings' ? "white" : "var(--text-dark)",
+            background: "none",
+            color: activeTab === 'settings' ? "var(--accent-color)" : "var(--text-dark)",
             cursor: "pointer",
             fontSize: "1rem",
-            fontWeight: "bold",
-            borderBottom: activeTab === 'settings' ? "3px solid var(--accent-color)" : "none"
+            fontWeight: activeTab === 'settings' ? 700 : 500,
+            borderBottom: activeTab === 'settings' ? "3px solid var(--accent-color)" : "3px solid transparent",
+            transition: 'color 0.2s, border-bottom 0.2s',
+            outline: 'none',
+            marginRight: 8,
+            backgroundColor: 'transparent',
+            borderRadius: '6px 6px 0 0',
           }}
         >
           Settings
         </button>
       </div>
-
       {/* Content Area */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ paddingBottom: '40px' }}>
         {activeTab === 'plot' && (
           <div style={{
-            flex: 1,
-            minHeight: 0,
-            height: '100%',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'row',
-            gap: '20px',
-            padding: '20px'
-          }}>
-            {/* Plot 1 */}
-            <div style={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <PlotComponent
-                plotLabel="Plot 1"
-                theme={theme}
-                playerNames={playerNames}
-                // Each PlotComponent manages its own state
-              />
-            </div>
-            {/* Plot 2 */}
-            <div style={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <PlotComponent
-                plotLabel="Plot 2"
-                theme={theme}
-                playerNames={playerNames}
-                // Each PlotComponent manages its own state
-              />
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'journal' && (
-          <div style={{
-            height: "100%",
-            padding: "20px",
-            overflow: "auto"
+            padding: "24px 24px 0 24px",
+            display: "flex",
+            flexDirection: "column"
           }}>
             <div style={{
-              background: "var(--cream-panel)",
-              borderRadius: "8px",
-              padding: "20px",
-              border: "1px solid var(--panel-border)"
+              display: "flex",
+              gap: "20px"
             }}>
-              <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Reflection Journal</h3>
-              {questions.map((question, index) => (
-                <QuestionBox
-                  key={index}
-                  question={question}
-                  index={index}
+              {/* Left Plot */}
+              <div style={{ flex: 1, minWidth: 0, marginBottom: '32px' }}>
+                <PlotComponent
+                  plotLabel="Plot 1"
+                  theme={theme}
+                  data={[]}
                   logAction={logAction}
                 />
-              ))}
+              </div>
+              {/* Right Plot */}
+              <div style={{ flex: 1, minWidth: 0, marginBottom: '32px' }}>
+                <PlotComponent
+                  plotLabel="Plot 2"
+                  theme={theme}
+                  data={[]}
+                  logAction={logAction}
+                />
+              </div>
             </div>
           </div>
         )}
-
-        {activeTab === 'settings' && (
-          <div style={{
-            height: "100%",
-            padding: "20px",
-            overflow: "auto"
-          }}>
+        {activeTab === 'journal' && (
+          <React.Fragment>
             <div style={{
-              background: "var(--cream-panel)",
-              borderRadius: "8px",
+              height: "100%",
               padding: "20px",
-              border: "1px solid var(--panel-border)"
+              overflow: "auto"
             }}>
-              <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Settings</h3>
-              
-              <div style={{ marginBottom: "20px" }}>
-                <h4 style={{ marginBottom: "10px", color: "var(--text-dark)" }}>Theme</h4>
-                <select
-                  value={theme}
-                  onChange={(e) => setTheme(e.target.value)}
-                  style={{
-                    padding: "8px",
-                    borderRadius: "4px",
-                    border: "1px solid var(--panel-border)",
-                    background: "white"
-                  }}
-                >
-                  <option value="unity">Unity</option>
-                  <option value="dark">Dark</option>
-                  <option value="light">Light</option>
-                </select>
+              <div style={{
+                background: "var(--cream-panel)",
+                borderRadius: "8px",
+                padding: "20px",
+                border: "1px solid var(--panel-border)"
+              }}>
+                <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Reflection Journal</h3>
+                {questions.map((question, index) => (
+                  <QuestionBox
+                    key={index}
+                    question={question}
+                    index={index}
+                    logAction={logAction}
+                  />
+                ))}
               </div>
-
-              <div style={{ marginBottom: "20px" }}>
-                <h4 style={{ marginBottom: "10px", color: "var(--text-dark)" }}>Data Management</h4>
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <button
-                    onClick={handleExport}
-                    style={{
-                      padding: "10px 20px",
-                      background: "var(--accent-color)",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer"
-                    }}
-                  >
-                    Export Data
-                  </button>
-                  <button
-                    onClick={handleErase}
-                    style={{
-                      padding: "10px 20px",
-                      background: "#dc3545",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer"
-                    }}
-                  >
-                    Erase All Data
-                  </button>
+            </div>
+          </React.Fragment>
+        )}
+        {activeTab === 'settings' && (
+          <React.Fragment>
+            <div style={{
+              height: "100%",
+              padding: "20px",
+              overflow: "auto"
+            }}>
+              <div style={{
+                background: "var(--cream-panel)",
+                borderRadius: "8px",
+                padding: "20px",
+                border: "1px solid var(--panel-border)"
+              }}>
+                <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Settings</h3>
+                
+                <div style={{ marginBottom: "20px" }}>
+                  <h4 style={{ marginBottom: "10px", color: "var(--text-dark)" }}>Data Management</h4>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <button
+                      onClick={exportLogAsJson}
+                      style={{
+                        padding: "10px 20px",
+                        background: "var(--accent-color)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      Export Data
+                    </button>
+                    <button
+                      onClick={handleErase}
+                      style={{
+                        padding: "10px 20px",
+                        background: "#dc3545",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      Erase All Data
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </React.Fragment>
         )}
       </div>
     </div>

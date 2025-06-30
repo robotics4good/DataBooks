@@ -83,18 +83,13 @@ const RightPanelContent = ({ selectedGame, theme }) => {
 };
 
 const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
-  const { logAction, exportLog, clearLog } = useUserLog();
+  const { logAction, exportLog, clearLog, exportLogAsJson } = useUserLog();
 
   const [leftWidth, setLeftWidth] = useState(30);
   const [activeTab, setActiveTab] = useState('journal');
   const [isDragging, setIsDragging] = useState(false);
   const [notification, setNotification] = useState({ message: '', type: '' });
   const [theme, setTheme] = useState('unity');
-
-  // Plot state for the right panel
-  const [plotType, setPlotType] = useState('line');
-  const [xVariable, setXVariable] = useState('Time');
-  const [yVariable, setYVariable] = useState('Infections');
 
   const questions = [
     "What were your initial thoughts or feelings about the game when you first saw it?",
@@ -165,7 +160,7 @@ const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
   const handleExport = () => {
     logAction('Clicked Export button');
     setTimeout(() => {
-      exportLog();
+      exportLogAsJson();
       showNotification('User actions exported successfully!', 'success');
     }, 100);
   };
@@ -254,7 +249,7 @@ const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
               <div style={{ marginTop: '1.5rem' }}>
                 <p>Data Management</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <button onClick={handleExport} style={{ width: '100%' }}>Export User Actions</button>
+                  <button onClick={handleExport} style={{ width: '100%' }}>Export Data</button>
                   <button onClick={handleErase} className="danger" style={{ width: '100%' }}>Erase All User Data</button>
                 </div>
               </div>
@@ -292,15 +287,15 @@ const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          background: "var(--offwhite-bg)"
+          background: "var(--offwhite-bg)",
+          padding: "20px"
         }}
       >
         <PlotComponent
-          plotType={plotType}
-          xVariable={xVariable}
-          yVariable={yVariable}
-          playerNames={playerNames}
-          // Add more props as needed
+          plotLabel="Data Visualization"
+          theme={theme}
+          data={[]}
+          logAction={logAction}
         />
       </div>
     </div>

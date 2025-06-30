@@ -120,17 +120,21 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
   const filteredData = data; // TODO: implement filtering based on xVar, yVar, personFilter
 
   return (
-    <div style={{ flex: 1, background: 'var(--cream-panel)', border: '2px solid var(--divider-green-light)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ flex: 1, background: 'var(--cream-panel)', border: '2px solid var(--divider-green-light)', borderRadius: '8px', padding: '0.5rem', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Render the actual plot FIRST */}
       <div style={{
-        marginBottom: '1.2rem',
-        flex: 1,
-        minHeight: 320,
-        maxHeight: 420,
-        height: 380,
+        marginBottom: '0.7rem',
+        minHeight: 180,
+        maxHeight: 260,
+        height: 260,
+        maxWidth: '360px',
+        width: '95%',
+        marginLeft: 'auto',
+        marginRight: 'auto',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        flexShrink: 0
       }}>
         {plotType === 'pie' ? (
           <PiePlot theme={theme} logAction={logAction} />
@@ -139,9 +143,18 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
         )}
       </div>
       {/* Controls BELOW the plot */}
-      <div style={{ width: '100%' }}>
+      <div style={{
+        width: '100%',
+        overflowY: 'auto',
+        maxHeight: 320,
+        paddingBottom: '2rem',
+        border: '1.5px solid var(--panel-border)',
+        borderRadius: '8px',
+        background: 'var(--offwhite-bg)'
+      }}>
+        {/* Removed plotLabel heading to maximize space for options */}
+        {/* <h3 style={{ color: 'var(--text-dark)' }}>{plotLabel}</h3> */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 style={{ color: 'var(--text-dark)' }}>{plotLabel}</h3>
           <select
             value={plotType}
             onChange={e => {

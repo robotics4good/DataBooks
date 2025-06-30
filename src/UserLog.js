@@ -49,12 +49,24 @@ export function UserLogProvider({ children }) {
     URL.revokeObjectURL(url);
   };
 
+  // Export user actions as JSON file
+  const exportLogAsJson = () => {
+    const json = JSON.stringify(userActions, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'user_actions.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const clearLog = () => {
     setUserActions([]);
   };
 
   return (
-    <UserLogContext.Provider value={{ userActions, logAction, exportLog, clearLog }}>
+    <UserLogContext.Provider value={{ userActions, logAction, exportLog, exportLogAsJson, clearLog }}>
       {children}
     </UserLogContext.Provider>
   );
