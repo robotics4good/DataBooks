@@ -66,6 +66,12 @@
   --panel-border: #e0e0e0;
 }
 
+body, html, #root {
+  min-height: 100vh !important;
+  height: auto !important;
+  overflow-y: auto !important;
+}
+
 body, .App {
   background: var(--lavender-bg);
   color: var(--text-dark);
@@ -223,7 +229,7 @@ input::placeholder, textarea::placeholder {
 
 /* Peach background for main page */
 .landing-bg {
-  background: var(--peach-bg) !important;
+  background: linear-gradient(135deg, #b993d6 0%, #8ca6db 50%, #4b306a 100%) !important;
 }
 
 /* Dark green for Outbreak Squad button */
@@ -313,4 +319,9 @@ input::placeholder, textarea::placeholder {
     color: var(--text-dark);
     background: var(--cream-panel);
   }
+}
+
+.main-content {
+  min-height: 100vh;
+  overflow-y: auto;
 }

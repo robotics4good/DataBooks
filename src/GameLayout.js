@@ -6,6 +6,7 @@ import PollinationParty from "./games/PollinationParty";
 import RushHourRebels from "./games/RushHourRebels";
 import PlotComponent from "./plots/PlotComponent";
 import { useUserLog } from "./UserLog";
+import { useJournal } from "./JournalContext";
 
 const MIN_WIDTH_PERCENT = 30;
 const MAX_WIDTH_PERCENT = 50;
@@ -24,9 +25,10 @@ const AutoResizingTextarea = ({ value, onChange, onBlur, ...props }) => {
 };
 
 const QuestionBox = ({ question, index, logAction }) => {
-    const [answer, setAnswer] = useState("");
+    const { journalAnswers, setJournalAnswer } = useJournal();
+    const answer = journalAnswers[index] || "";
     const handleAnswerChange = (e) => {
-        setAnswer(e.target.value);
+        setJournalAnswer(index, e.target.value);
     };
 
     const handleAnswerBlur = (e) => {
@@ -56,7 +58,6 @@ const QuestionBox = ({ question, index, logAction }) => {
                     resize: "none",
                     boxSizing: 'border-box',
                     margin: 0,
-                    overflowY: 'hidden'
                 }}
             />
         </div>
@@ -249,7 +250,7 @@ const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
               <div style={{ marginTop: '1.5rem' }}>
                 <p>Data Management</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <button onClick={handleExport} style={{ width: '100%' }}>Export Data</button>
+                  <button onClick={handleExport} style={{ width: '100%', background: 'var(--accent-green)', color: 'white' }}>Export Data</button>
                   <button onClick={handleErase} className="danger" style={{ width: '100%' }}>Erase All User Data</button>
                 </div>
               </div>
@@ -288,7 +289,8 @@ const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
           display: "flex",
           flexDirection: "column",
           background: "var(--offwhite-bg)",
-          padding: "20px"
+          padding: "20px",
+          overflowX: "hidden"
         }}
       >
         <PlotComponent

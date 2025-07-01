@@ -6,6 +6,7 @@ import PollinationParty from "./games/PollinationParty";
 import RushHourRebels from "./games/RushHourRebels";
 import { useUserLog } from "./UserLog";
 import PlotComponent from "./plots/PlotComponent";
+import { useJournal } from "./JournalContext";
 
 const MIN_WIDTH_PERCENT = 30;
 const MAX_WIDTH_PERCENT = 50;
@@ -24,9 +25,10 @@ const AutoResizingTextarea = ({ value, onChange, onBlur, ...props }) => {
 };
 
 const QuestionBox = ({ question, index, logAction }) => {
-    const [answer, setAnswer] = useState("");
+    const { journalAnswers, setJournalAnswer } = useJournal();
+    const answer = journalAnswers[index] || "";
     const handleAnswerChange = (e) => {
-        setAnswer(e.target.value);
+        setJournalAnswer(index, e.target.value);
     };
 
     const handleAnswerBlur = (e) => {
@@ -36,8 +38,8 @@ const QuestionBox = ({ question, index, logAction }) => {
     };
 
     return (
-        <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+        <div style={styles.questionBox}>
+            <label style={styles.questionLabel}>
                 {question}
             </label>
             <AutoResizingTextarea
@@ -45,19 +47,7 @@ const QuestionBox = ({ question, index, logAction }) => {
                 value={answer}
                 onChange={handleAnswerChange}
                 onBlur={handleAnswerBlur}
-                style={{
-                    width: "100%",
-                    minHeight: '50px',
-                    background: "var(--cream-panel)",
-                    color: "var(--text-dark)",
-                    border: "1px solid var(--panel-border)",
-                    borderRadius: "4px",
-                    padding: "0.5rem",
-                    resize: "none",
-                    boxSizing: 'border-box',
-                    margin: 0,
-                    overflowY: 'hidden'
-                }}
+                style={styles.textarea}
             />
         </div>
     );
@@ -79,6 +69,97 @@ const GameContent = ({ selectedGame, theme }) => {
       return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '1.2rem' }}>
         Select a game to begin
       </div>;
+  }
+};
+
+// Style objects for SingleScreenLayout
+const styles = {
+  main: {
+    boxSizing: "border-box",
+    display: "flex",
+    flexDirection: "column",
+    background: "var(--offwhite-bg)"
+  },
+  tabHeader: {
+    display: "flex",
+    background: "var(--cream-panel)",
+    borderBottom: "1.5px solid var(--panel-border)",
+    padding: "0 8px",
+    height: 44,
+    alignItems: 'flex-end',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+  },
+  tabButton: isActive => ({
+    padding: "0 18px",
+    height: 40,
+    border: "none",
+    background: "none",
+    color: isActive ? "var(--accent-color)" : "var(--text-dark)",
+    cursor: "pointer",
+    fontSize: "1rem",
+    fontWeight: isActive ? 700 : 500,
+    borderBottom: isActive ? "3px solid var(--accent-color)" : "3px solid transparent",
+    transition: 'color 0.2s, border-bottom 0.2s',
+    outline: 'none',
+    marginRight: 8,
+    backgroundColor: 'transparent',
+    borderRadius: '6px 6px 0 0',
+  }),
+  contentArea: {
+    minHeight: '100vh',
+    padding: 0,
+    paddingBottom: '2rem'
+  },
+  plotRow: {
+    display: "flex",
+    gap: "20px",
+    paddingBottom: "2rem"
+  },
+  plotContainer: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+    padding: '20px',
+    paddingBottom: '1.5rem',
+    marginBottom: '1.5rem',
+    boxSizing: 'border-box'
+  },
+  card: {
+    background: "var(--cream-panel)",
+    borderRadius: "8px",
+    padding: "20px",
+    border: "1px solid var(--panel-border)"
+  },
+  notification: {
+    // Notification styles are handled by CSS class, but you can add fallback styles here if needed
+  },
+  settingsButton: (color) => ({
+    padding: "10px 20px",
+    background: color,
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer"
+  }),
+  questionBox: {
+    marginBottom: '1rem'
+  },
+  questionLabel: {
+    display: 'block',
+    marginBottom: '0.5rem',
+    fontWeight: 'bold'
+  },
+  textarea: {
+    width: "100%",
+    minHeight: '50px',
+    background: "var(--cream-panel)",
+    color: "var(--text-dark)",
+    border: "1px solid var(--panel-border)",
+    borderRadius: "4px",
+    padding: "0.5rem",
+    resize: "none",
+    boxSizing: 'border-box',
+    margin: 0
   }
 };
 
@@ -209,104 +290,38 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
   };
 
   return (
-    <div className={`${theme}-mode`} style={{
-      display: "flex",
-      flexDirection: "column",
-      background: "var(--offwhite-bg)"
-    }}>
+    <div className={`${theme}-mode`} style={styles.main}>
       {notification.message && (
-        <div className={`notification ${notification.type}`}>
-          {notification.message}
-        </div>
+        <div className={`notification ${notification.type}`}>{notification.message}</div>
       )}
       {/* Tab Header */}
-      <div style={{
-        display: "flex",
-        background: "var(--cream-panel)",
-        borderBottom: "1.5px solid var(--panel-border)",
-        padding: "0 8px",
-        height: 44,
-        alignItems: 'flex-end',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-      }}>
+      <div style={styles.tabHeader}>
         <button
           onClick={() => setActiveTab('plot')}
-          style={{
-            padding: "0 18px",
-            height: 40,
-            border: "none",
-            background: "none",
-            color: activeTab === 'plot' ? "var(--accent-color)" : "var(--text-dark)",
-            cursor: "pointer",
-            fontSize: "1rem",
-            fontWeight: activeTab === 'plot' ? 700 : 500,
-            borderBottom: activeTab === 'plot' ? "3px solid var(--accent-color)" : "3px solid transparent",
-            transition: 'color 0.2s, border-bottom 0.2s',
-            outline: 'none',
-            marginRight: 8,
-            backgroundColor: 'transparent',
-            borderRadius: '6px 6px 0 0',
-          }}
+          style={styles.tabButton(activeTab === 'plot')}
         >
           Plot
         </button>
         <button
           onClick={() => setActiveTab('journal')}
-          style={{
-            padding: "0 18px",
-            height: 40,
-            border: "none",
-            background: "none",
-            color: activeTab === 'journal' ? "var(--accent-color)" : "var(--text-dark)",
-            cursor: "pointer",
-            fontSize: "1rem",
-            fontWeight: activeTab === 'journal' ? 700 : 500,
-            borderBottom: activeTab === 'journal' ? "3px solid var(--accent-color)" : "3px solid transparent",
-            transition: 'color 0.2s, border-bottom 0.2s',
-            outline: 'none',
-            marginRight: 8,
-            backgroundColor: 'transparent',
-            borderRadius: '6px 6px 0 0',
-          }}
+          style={styles.tabButton(activeTab === 'journal')}
         >
           Journal
         </button>
         <button
           onClick={() => setActiveTab('settings')}
-          style={{
-            padding: "0 18px",
-            height: 40,
-            border: "none",
-            background: "none",
-            color: activeTab === 'settings' ? "var(--accent-color)" : "var(--text-dark)",
-            cursor: "pointer",
-            fontSize: "1rem",
-            fontWeight: activeTab === 'settings' ? 700 : 500,
-            borderBottom: activeTab === 'settings' ? "3px solid var(--accent-color)" : "3px solid transparent",
-            transition: 'color 0.2s, border-bottom 0.2s',
-            outline: 'none',
-            marginRight: 8,
-            backgroundColor: 'transparent',
-            borderRadius: '6px 6px 0 0',
-          }}
+          style={styles.tabButton(activeTab === 'settings')}
         >
           Settings
         </button>
       </div>
       {/* Content Area */}
-      <div style={{ paddingBottom: '40px' }}>
+      <div style={styles.contentArea}>
         {activeTab === 'plot' && (
-          <div style={{
-            padding: "24px 24px 0 24px",
-            display: "flex",
-            flexDirection: "column"
-          }}>
-            <div style={{
-              display: "flex",
-              gap: "20px"
-            }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={styles.plotRow}>
               {/* Left Plot */}
-              <div style={{ flex: 1, minWidth: 0, marginBottom: '32px' }}>
+              <div style={styles.plotContainer}>
                 <PlotComponent
                   plotLabel="Plot 1"
                   theme={theme}
@@ -315,7 +330,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
                 />
               </div>
               {/* Right Plot */}
-              <div style={{ flex: 1, minWidth: 0, marginBottom: '32px' }}>
+              <div style={styles.plotContainer}>
                 <PlotComponent
                   plotLabel="Plot 2"
                   theme={theme}
@@ -328,17 +343,8 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
         )}
         {activeTab === 'journal' && (
           <React.Fragment>
-            <div style={{
-              height: "100%",
-              padding: "20px",
-              overflow: "auto"
-            }}>
-              <div style={{
-                background: "var(--cream-panel)",
-                borderRadius: "8px",
-                padding: "20px",
-                border: "1px solid var(--panel-border)"
-              }}>
+            <div style={{ height: "100%", padding: "20px", overflow: "auto" }}>
+              <div style={styles.card}>
                 <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Reflection Journal</h3>
                 {questions.map((question, index) => (
                   <QuestionBox
@@ -354,45 +360,21 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
         )}
         {activeTab === 'settings' && (
           <React.Fragment>
-            <div style={{
-              height: "100%",
-              padding: "20px",
-              overflow: "auto"
-            }}>
-              <div style={{
-                background: "var(--cream-panel)",
-                borderRadius: "8px",
-                padding: "20px",
-                border: "1px solid var(--panel-border)"
-              }}>
+            <div style={{ height: "100%", padding: "20px", overflow: "auto" }}>
+              <div style={styles.card}>
                 <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Settings</h3>
-                
                 <div style={{ marginBottom: "20px" }}>
                   <h4 style={{ marginBottom: "10px", color: "var(--text-dark)" }}>Data Management</h4>
                   <div style={{ display: "flex", gap: "10px" }}>
                     <button
                       onClick={exportLogAsJson}
-                      style={{
-                        padding: "10px 20px",
-                        background: "var(--accent-color)",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: "pointer"
-                      }}
+                      style={styles.settingsButton("var(--accent-green)")}
                     >
                       Export Data
                     </button>
                     <button
                       onClick={handleErase}
-                      style={{
-                        padding: "10px 20px",
-                        background: "#dc3545",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: "pointer"
-                      }}
+                      style={styles.settingsButton("#dc3545")}
                     >
                       Erase All Data
                     </button>

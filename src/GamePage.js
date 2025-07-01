@@ -3,6 +3,7 @@ import { useParams, useNavigate, Navigate } from "react-router-dom";
 import SingleScreenLayout from "./SingleScreenLayout";
 import DualScreenLayout from "./GameLayout";
 import { useUserLog } from "./UserLog";
+import { JournalProvider } from "./JournalContext";
 
 const GamePage = () => {
   const { gameKey } = useParams();
@@ -100,21 +101,23 @@ const GamePage = () => {
       </div>
 
       {/* Game Content */}
-      <div style={{ flex: 1, overflow: "hidden" }}>
-        {dualScreen ? (
-          <DualScreenLayout
-            selectedGame={gameKey}
-            handleBackToGames={handleBackToGames}
-            playerNames={playerNames}
-          />
-        ) : (
-          <SingleScreenLayout
-            selectedGame={gameKey}
-            handleBackToGames={handleBackToGames}
-            playerNames={playerNames}
-          />
-        )}
-      </div>
+      <JournalProvider>
+        <div style={{ flex: 1, overflow: "auto" }}>
+          {dualScreen ? (
+            <DualScreenLayout
+              selectedGame={gameKey}
+              handleBackToGames={handleBackToGames}
+              playerNames={playerNames}
+            />
+          ) : (
+            <SingleScreenLayout
+              selectedGame={gameKey}
+              handleBackToGames={handleBackToGames}
+              playerNames={playerNames}
+            />
+          )}
+        </div>
+      </JournalProvider>
     </div>
   );
 };
