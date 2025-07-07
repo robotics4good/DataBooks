@@ -7,51 +7,12 @@ import RushHourRebels from "./games/RushHourRebels";
 import { useUserLog } from "./UserLog";
 import PlotComponent from "./plots/PlotComponent";
 import { useJournal } from "./JournalContext";
+import { JournalQuestions } from "./components/JournalQuestions";
 
 const MIN_WIDTH_PERCENT = 30;
 const MAX_WIDTH_PERCENT = 50;
 
-const AutoResizingTextarea = ({ value, onChange, onBlur, ...props }) => {
-  const textareaRef = useRef(null);
 
-  useLayoutEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'inherit';
-      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 50)}px`;
-    }
-  }, [value]);
-
-  return <textarea ref={textareaRef} value={value} onChange={onChange} onBlur={onBlur} {...props} />;
-};
-
-const QuestionBox = ({ question, index, logAction }) => {
-    const { journalAnswers, setJournalAnswer } = useJournal();
-    const answer = journalAnswers[index] || "";
-    const handleAnswerChange = (e) => {
-        setJournalAnswer(index, e.target.value);
-    };
-
-    const handleAnswerBlur = (e) => {
-        const value = e.target.value;
-        const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
-        logAction(`journal_entry`, `Question ${index + 1} word_count: ${wordCount}`);
-    };
-
-    return (
-        <div style={styles.questionBox}>
-            <label style={styles.questionLabel}>
-                {question}
-            </label>
-            <AutoResizingTextarea
-                placeholder="Your answer..."
-                value={answer}
-                onChange={handleAnswerChange}
-                onBlur={handleAnswerBlur}
-                style={styles.textarea}
-            />
-        </div>
-    );
-};
 
 const GameContent = ({ selectedGame, theme }) => {
   switch (selectedGame) {
@@ -193,25 +154,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
   const xVariables = ["Time", "Distance", "Score", "Attempts"];
   const yVariables = ["Infections", "Vaccinations", "Population", "Efficiency"];
 
-  const questions = [
-    "What were your initial thoughts or feelings about the game when you first saw it?",
-    "Describe your strategy during the game. Did it change over time?",
-    "What was the most challenging part of the game for you?",
-    "Were there any moments that you found particularly surprising or interesting?",
-    "If you could change one thing about the game, what would it be and why?",
-    "How did this game make you think about the real-world topic it represents?",
-    "If you played before, how did this round compare to your previous experiences?",
-    "If you were a researcher, what data would you collect from this game?",
-    "What part of the game was most engaging?",
-    "What part of the game was most confusing?",
-    "How many times did you try the game?",
-    "What was your final score?",
-    "How do you think the creators of this game want you to feel?",
-    "What is the key takeaway from the game?",
-    "If you got infected, what time did it happen?",
-    "How do you think the vaccine affected the spread this time?",
-    "Is there anything else you would like to share about your experience?"
-  ];
+
 
   // Person filter state (unique per plot, decorative for now)
   const [plot1PersonFilter, setPlot1PersonFilter] = useState(playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
@@ -293,17 +236,16 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
       
       {/* Header with back button and toggle */}
       <div className="tab-header" style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
         width: '100%',
-        zIndex: 100,
+        margin: 0,
+        borderRadius: 0,
+        boxSizing: 'border-box',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '0 32px',
         height: '56px',
-        background: 'linear-gradient(90deg, #7b8ed6 0%, #8f6ed5 100%)',
+        background: 'linear-gradient(90deg, #6a7fd6 0%, #7b5ed7 100%)',
         borderBottom: 'none',
         boxShadow: '0 2px 8px rgba(34,34,34,0.04)'
       }}>
@@ -314,8 +256,8 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
             color: '#fff',
             fontWeight: 'bold',
             borderRadius: '10px',
-            padding: '0.7em 1.5em',
-            fontSize: '1.1rem',
+            padding: '0.5em 1.2em',
+            fontSize: '1rem',
             border: 'none',
             boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
             transition: 'background 0.2s',
@@ -326,9 +268,9 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
             gap: '0.5em',
           }}
         >
-          <span style={{fontSize: '1.2em', marginRight: '0.3em'}}>&larr;</span> Back to Games
+          <span style={{fontSize: '1.1em', marginRight: '0.3em'}}>&larr;</span> Back to Games
         </button>
-        <div style={{ flex: 1, textAlign: 'center', color: 'white', fontWeight: 700, fontSize: '1.5rem', letterSpacing: '0.02em', textShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+        <div style={{ flex: 1, textAlign: 'center', color: 'white', fontWeight: 700, fontSize: '1.25rem', letterSpacing: '0.02em', textShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
           {getGameDisplayName(selectedGame)}
         </div>
         <button
@@ -338,8 +280,8 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
             color: '#fff',
             fontWeight: 'bold',
             borderRadius: '10px',
-            padding: '0.7em 1.5em',
-            fontSize: '1.1rem',
+            padding: '0.5em 1.2em',
+            fontSize: '1rem',
             border: 'none',
             boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
             transition: 'background 0.2s',
@@ -354,7 +296,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
       </div>
       {/* Main content area */}
       <div style={{
-        marginTop: '56px', // Push content below fixed header
+        marginTop: 0,
         display: "flex",
         flexDirection: "column"
       }}>
@@ -367,7 +309,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
           borderBottom: 'none',
           height: 48,
           width: '100%',
-          margin: 0,
+          margin: '18px 0 0 0',
           marginBottom: '12px',
           borderRadius: 0,
           boxShadow: 'none',
@@ -383,7 +325,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
               border: 'none',
               borderRadius: 0,
               fontSize: '1.15rem',
-              fontWeight: activeTab === 'plot' ? 700 : 600,
+              fontWeight: activeTab === 'plot' ? 800 : 600,
               cursor: 'pointer',
               outline: 'none',
               position: 'relative',
@@ -399,8 +341,8 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
                 background: 'rgba(80, 200, 120, 0.13)',
                 borderRadius: 999,
                 padding: '0.4em 1.5em',
-                fontWeight: 700,
-                color: 'var(--accent-green)',
+                fontWeight: 800,
+                color: 'var(--dark-green)',
                 fontSize: '1.1em',
               }}>Plot</span>
             ) : 'Plot'}
@@ -414,7 +356,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
               border: 'none',
               borderRadius: 0,
               fontSize: '1.15rem',
-              fontWeight: activeTab === 'journal' ? 700 : 600,
+              fontWeight: activeTab === 'journal' ? 800 : 600,
               cursor: 'pointer',
               outline: 'none',
               position: 'relative',
@@ -430,8 +372,8 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
                 background: 'rgba(80, 200, 120, 0.13)',
                 borderRadius: 999,
                 padding: '0.4em 1.5em',
-                fontWeight: 700,
-                color: 'var(--accent-green)',
+                fontWeight: 800,
+                color: 'var(--dark-green)',
                 fontSize: '1.1em',
               }}>Journal</span>
             ) : 'Journal'}
@@ -445,7 +387,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
               border: 'none',
               borderRadius: 0,
               fontSize: '1.15rem',
-              fontWeight: activeTab === 'settings' ? 700 : 600,
+              fontWeight: activeTab === 'settings' ? 800 : 600,
               cursor: 'pointer',
               outline: 'none',
               position: 'relative',
@@ -461,8 +403,8 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
                 background: 'rgba(80, 200, 120, 0.13)',
                 borderRadius: 999,
                 padding: '0.4em 1.5em',
-                fontWeight: 700,
-                color: 'var(--accent-green)',
+                fontWeight: 800,
+                color: 'var(--dark-green)',
                 fontSize: '1.1em',
               }}>Settings</span>
             ) : 'Settings'}
@@ -496,15 +438,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
           <React.Fragment>
             <div style={{ height: "100%", padding: "20px", overflow: "auto" }}>
               <div style={styles.card}>
-                <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Reflection Journal</h3>
-                {questions.map((question, index) => (
-                  <QuestionBox
-                    key={index}
-                    question={question}
-                    index={index}
-                    logAction={logAction}
-                  />
-                ))}
+                <JournalQuestions logAction={logAction} />
               </div>
             </div>
           </React.Fragment>

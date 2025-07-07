@@ -17,7 +17,7 @@ const AlienInvasion = () => {
   const [timeLeft, setTimeLeft] = useState(60);
   const [alienShips, setAlienShips] = useState([]);
   const [playerPosition, setPlayerPosition] = useState({ x: 50, y: 50 });
-
+  
   // Game timer
   useEffect(() => {
     if (gameState === 'playing') {
@@ -126,15 +126,15 @@ const AlienInvasion = () => {
         justifyContent: "center",
         fontSize: "1.2rem"
       }}>
-        Loading Alien Invasion data...
+          Loading Alien Invasion data...
       </div>
     );
   }
 
   // Error state
   if (error) {
-    return (
-      <div style={{
+  return (
+    <div style={{
         padding: 32,
         color: '#b00',
         textAlign: 'center'
@@ -146,8 +146,8 @@ const AlienInvasion = () => {
 
   // No data state
   if (!espData.length) {
-    return (
-      <div style={{
+  return (
+    <div style={{ 
         padding: 32,
         color: '#666',
         textAlign: 'center'
@@ -159,7 +159,7 @@ const AlienInvasion = () => {
 
   // Game UI components
   const GameControls = () => (
-    <div style={{
+      <div style={{ 
       position: 'absolute',
       top: 20,
       left: 20,
@@ -176,46 +176,46 @@ const AlienInvasion = () => {
   );
 
   const GameButtons = () => (
-    <div style={{
+        <div style={{ 
       position: 'absolute',
       top: 20,
       right: 20,
       zIndex: 10,
       display: 'flex',
       gap: 10
-    }}>
-      {gameState === 'waiting' && (
-        <button
-          onClick={startGame}
-          style={{
-            padding: '10px 20px',
+        }}>
+          {gameState === 'waiting' && (
+        <button 
+                onClick={startGame}
+                style={{
+                  padding: '10px 20px',
             background: '#4CAF50',
-            color: 'white',
-            border: 'none',
+                  color: 'white',
+                  border: 'none',
             borderRadius: 5,
-            cursor: 'pointer'
-          }}
-        >
-          Start Game
+                  cursor: 'pointer'
+                }}
+              >
+                Start Game
         </button>
-      )}
-      
-      {gameState === 'gameOver' && (
-        <button
-          onClick={resetGame}
-          style={{
-            padding: '10px 20px',
+          )}
+
+          {gameState === 'gameOver' && (
+        <button 
+                onClick={resetGame}
+                style={{
+                  padding: '10px 20px',
             background: '#2196F3',
-            color: 'white',
-            border: 'none',
+                  color: 'white',
+                  border: 'none',
             borderRadius: 5,
-            cursor: 'pointer'
-          }}
-        >
-          Play Again
+                  cursor: 'pointer'
+                }}
+              >
+                Play Again
         </button>
       )}
-    </div>
+            </div>
   );
 
   const GameArea = () => (
@@ -228,17 +228,17 @@ const AlienInvasion = () => {
       borderRadius: 10,
       overflow: 'hidden'
     }}>
-      {/* Player */}
+          {/* Player */}
       <div
         style={{
-          position: 'absolute',
-          left: `${playerPosition.x}%`,
-          top: `${playerPosition.y}%`,
+              position: 'absolute',
+              left: `${playerPosition.x}%`,
+              top: `${playerPosition.y}%`,
           width: 20,
           height: 20,
           background: '#FFD700',
-          borderRadius: '50%',
-          transform: 'translate(-50%, -50%)',
+              borderRadius: '50%',
+              transform: 'translate(-50%, -50%)',
           boxShadow: '0 0 10px #FFD700'
         }}
       />
@@ -247,25 +247,25 @@ const AlienInvasion = () => {
       {alienShips.map(ship => (
         <div
           key={ship.id}
-          style={{
-            position: 'absolute',
+              style={{
+                position: 'absolute',
             left: `${ship.x}%`,
             top: `${ship.y}%`,
             width: 15,
             height: 15,
             background: ship.type === 'interactive' ? '#FF4444' : '#FF8800',
-            borderRadius: '50%',
-            transform: 'translate(-50%, -50%)',
+                borderRadius: '50%',
+                transform: 'translate(-50%, -50%)',
             boxShadow: `0 0 ${ship.intensity * 5}px ${ship.type === 'interactive' ? '#FF4444' : '#FF8800'}`
-          }}
-        />
-      ))}
+              }}
+            />
+          ))}
     </div>
   );
 
   const GameOverScreen = () => (
-    <div style={{
-      position: 'absolute',
+          <div style={{
+            position: 'absolute',
       top: '50%',
       left: '50%',
       transform: 'translate(-50%, -50%)',
@@ -279,11 +279,11 @@ const AlienInvasion = () => {
       <h2>Game Over!</h2>
       <p>Final Score: {score}</p>
       <p>Level Reached: {Math.floor(score / 1000) + 1}</p>
-    </div>
+          </div>
   );
 
   return (
-    <div style={{
+        <div style={{ 
       padding: 20,
       height: '100vh',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -299,7 +299,7 @@ const AlienInvasion = () => {
         <p style={{ color: 'white', textAlign: 'center', marginBottom: 20 }}>
           Use arrow keys or WASD to move. Destroy alien ships to score points!
         </p>
-      </div>
+          </div>
 
       <GameArea />
       

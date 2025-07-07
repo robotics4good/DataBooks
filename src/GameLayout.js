@@ -7,62 +7,12 @@ import RushHourRebels from "./games/RushHourRebels";
 import PlotComponent from "./plots/PlotComponent";
 import { useUserLog } from "./UserLog";
 import { useJournal } from "./JournalContext";
+import { JournalQuestions } from "./components/JournalQuestions";
 
 const MIN_WIDTH_PERCENT = 30;
 const MAX_WIDTH_PERCENT = 50;
 
-const AutoResizingTextarea = ({ value, onChange, onBlur, ...props }) => {
-  const textareaRef = useRef(null);
 
-  useLayoutEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'inherit';
-      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 50)}px`;
-    }
-  }, [value]);
-
-  return <textarea ref={textareaRef} value={value} onChange={onChange} onBlur={onBlur} {...props} />;
-};
-
-const QuestionBox = ({ question, index, logAction }) => {
-    const { journalAnswers, setJournalAnswer } = useJournal();
-    const answer = journalAnswers[index] || "";
-    const handleAnswerChange = (e) => {
-        setJournalAnswer(index, e.target.value);
-    };
-
-    const handleAnswerBlur = (e) => {
-        const value = e.target.value;
-        const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
-        logAction(`journal_entry`, `Question ${index + 1} word_count: ${wordCount}`);
-    };
-
-    return (
-        <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                {question}
-            </label>
-            <AutoResizingTextarea
-                placeholder="Your answer..."
-                value={answer}
-                onChange={handleAnswerChange}
-                onBlur={handleAnswerBlur}
-                style={{
-                    width: "100%",
-                    minHeight: '50px',
-                    background: "var(--cream-panel)",
-                    color: "var(--text-dark)",
-                    border: "1px solid var(--panel-border)",
-                    borderRadius: "4px",
-                    padding: "0.5rem",
-                    resize: "none",
-                    boxSizing: 'border-box',
-                    margin: 0,
-                }}
-            />
-        </div>
-    );
-};
 
 const RightPanelContent = ({ selectedGame, theme, sessionId = "1234567890" }) => {
   switch (selectedGame) {
@@ -105,25 +55,7 @@ const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTogg
   const [notification, setNotification] = useState({ message: '', type: '' });
   const [theme, setTheme] = useState('unity');
 
-  const questions = [
-    "What were your initial thoughts or feelings about the game when you first saw it?",
-    "Describe your strategy during the game. Did it change over time?",
-    "What was the most challenging part of the game for you?",
-    "Were there any moments that you found particularly surprising or interesting?",
-    "If you could change one thing about the game, what would it be and why?",
-    "How did this game make you think about the real-world topic it represents?",
-    "If you played before, how did this round compare to your previous experiences?",
-    "If you were a researcher, what data would you collect from this game?",
-    "What part of the game was most engaging?",
-    "What part of the game was most confusing?",
-    "How many times did you try the game?",
-    "What was your final score?",
-    "How do you think the creators of this game want you to feel?",
-    "What is the key takeaway from the game?",
-    "If you got infected, what time did it happen?",
-    "How do you think the vaccine affected the spread this time?",
-    "Is there anything else you would like to share about your experience?"
-  ];
+
 
   const handleTabClick = (tabName) => {
     if (activeTab === tabName) {
@@ -363,12 +295,7 @@ const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTogg
           </div>
           <div className="tab-content" style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
             {activeTab === 'journal' && (
-              <div>
-                <h3>Journal</h3>
-                {questions.map((q, i) => (
-                  <QuestionBox key={i} question={q} index={i} logAction={logAction} />
-                ))}
-              </div>
+              <JournalQuestions logAction={logAction} />
             )}
             {activeTab === 'settings' && (
               <div>

@@ -1,21 +1,10 @@
 // ESPDataPlot.js - Plot component for ESP data from Firebase
 import React from 'react';
-import { useESPData } from '../hooks/useESPData';
 import PlotComponent from './PlotComponent';
 import styles from './PlotComponent.module.css';
 import { formatSanDiegoTime } from '../utils/timeUtils';
 
-const ESPDataPlot = ({ plotLabel = "ESP Data" }) => {
-  const { 
-    espData, 
-    loading, 
-    error, 
-    getPlotData, 
-    getAvailableVariables,
-    totalPackets,
-    uniqueStudents 
-  } = useESPData();
-
+const ESPDataPlot = ({ plotLabel = "ESP Data", espData = [], loading = false, error = null }) => {
   // Custom log action for ESP data plots
   const logAction = (action) => {
     console.log(`ESP Data Plot - ${action}`);
@@ -74,7 +63,13 @@ const ESPDataPlot = ({ plotLabel = "ESP Data" }) => {
   }
 
   // Transform ESP data for the plot component
-  const transformedData = getPlotData('line', 'timestamp', 'interaction');
+  const transformedData = [{
+    id: 'ESP Data',
+    data: espData.map(item => ({
+      x: item.timestamp ? formatSanDiegoTime(item.timestamp) : item.timestamp,
+      y: item.interaction || 0
+    }))
+  }];
 
   return (
     <div className={styles.plotContainer}>
@@ -87,14 +82,13 @@ const ESPDataPlot = ({ plotLabel = "ESP Data" }) => {
         fontSize: '0.8rem',
         color: '#000000'
       }}>
-        <strong>ESP Data Summary:</strong> {totalPackets} packets from {uniqueStudents} students
+        <strong>ESP Data Summary:</strong> {espData.length} packets
         {espData.length > 0 && (
           <span style={{ marginLeft: '12px' }}>
             Time range: {formatSanDiegoTime(Math.min(...espData.map(item => item.timestamp || 0)))} - {formatSanDiegoTime(Math.max(...espData.map(item => item.timestamp || 0)))}
           </span>
         )}
       </div>
-
       {/* Plot Component */}
       <PlotComponent
         plotLabel={plotLabel}

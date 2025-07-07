@@ -36,65 +36,65 @@ const LoginPage = ({ gameConfig }) => {
 
   // Player selection button component
   const PlayerButton = ({ player, isSelected, onClick }) => (
-    <button
+            <button
       onClick={() => onClick(player)}
-      style={{
-        padding: "12px 16px",
+              style={{
+                padding: "12px 16px",
         border: isSelected ? "3px solid #667eea" : "2px solid #ddd",
-        borderRadius: "10px",
+                borderRadius: "10px",
         background: isSelected ? "#f0f4ff" : "white",
         color: isSelected ? "#667eea" : "#333",
-        cursor: "pointer",
-        fontSize: "0.9rem",
+                cursor: "pointer",
+                fontSize: "0.9rem",
         fontWeight: isSelected ? "bold" : "normal",
-        transition: "all 0.3s ease"
-      }}
-    >
-      {player}
-    </button>
+                transition: "all 0.3s ease"
+              }}
+            >
+              {player}
+            </button>
   );
 
   // Action buttons component
   const ActionButtons = () => (
-    <div style={{
-      display: "flex",
-      gap: "15px",
-      justifyContent: "center"
-    }}>
-      <button
-        onClick={handleBackToGames}
-        style={{
-          padding: "12px 24px",
-          border: "2px solid #ddd",
-          borderRadius: "8px",
-          background: "white",
-          color: "#666",
-          cursor: "pointer",
-          fontSize: "1rem",
-          transition: "all 0.3s ease"
-        }}
-      >
-        Back to Games
-      </button>
-      
-      <button
-        onClick={handleStartGame}
-        disabled={!selectedPlayer}
-        style={{
-          padding: "12px 24px",
-          border: "none",
-          borderRadius: "8px",
-          background: selectedPlayer ? "#667eea" : "#ccc",
-          color: "white",
-          cursor: selectedPlayer ? "pointer" : "not-allowed",
-          fontSize: "1rem",
-          fontWeight: "bold",
-          transition: "all 0.3s ease"
-        }}
-      >
-        Start Game
-      </button>
-    </div>
+        <div style={{
+          display: "flex",
+          gap: "15px",
+          justifyContent: "center"
+        }}>
+          <button
+            onClick={handleBackToGames}
+            style={{
+              padding: "12px 24px",
+              border: "2px solid #ddd",
+              borderRadius: "8px",
+              background: "white",
+              color: "#666",
+              cursor: "pointer",
+              fontSize: "1rem",
+              transition: "all 0.3s ease"
+            }}
+          >
+            Back to Games
+          </button>
+          
+          <button
+            onClick={handleStartGame}
+            disabled={!selectedPlayer}
+            style={{
+              padding: "12px 24px",
+              border: "none",
+              borderRadius: "8px",
+              background: selectedPlayer ? "#667eea" : "#ccc",
+              color: "white",
+              cursor: selectedPlayer ? "pointer" : "not-allowed",
+              fontSize: "1rem",
+              fontWeight: "bold",
+              transition: "all 0.3s ease"
+            }}
+          >
+            Start Game
+          </button>
+        </div>
   );
 
   return (
