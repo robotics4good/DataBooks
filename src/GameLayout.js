@@ -83,7 +83,20 @@ const RightPanelContent = ({ selectedGame, theme, sessionId = "1234567890" }) =>
   }
 };
 
-const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
+// Helper to get display name for header
+const getGameDisplayName = (selectedGame) => {
+  if (!selectedGame) return "";
+  if (typeof selectedGame === "string") {
+    return selectedGame.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  if (selectedGame.name) return selectedGame.name;
+  if (selectedGame.key) {
+    return selectedGame.key.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  return String(selectedGame);
+};
+
+const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onToggleLayout }) => {
   const { logAction, exportLog, clearLog, exportLogAsJson } = useUserLog();
 
   const [leftWidth, setLeftWidth] = useState(30);
@@ -176,168 +189,251 @@ const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
     <div className={`${theme}-mode`} style={{
       height: "100vh",
       display: "flex",
+      flexDirection: "column"
     }}>
        {notification.message && (
         <div className={`notification ${notification.type}`}>
           {notification.message}
         </div>
       )}
-      <div
-        className="left-panel"
-        style={{
-          width: `${leftWidth}%`,
-          minWidth: `${MIN_WIDTH_PERCENT}%`,
-          maxWidth: `${MAX_WIDTH_PERCENT}%`,
-          display: "flex",
-          flexDirection: "column",
-          userSelect: isDragging ? 'none' : 'auto',
-          zIndex: 1,
-          position: 'relative',
-        }}
-      >
-        <div className="tab-header" style={{
-          display: 'flex',
-          background: 'var(--cream-panel)',
-          borderBottom: 'none',
-          height: 48,
-          alignItems: 'flex-end',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-        }}>
-          <button
-            className="tab-btn"
-            onClick={() => handleTabClick('journal')}
-            style={{
-              flex: 1,
-              padding: '1rem',
-              background: 'var(--cream-panel)',
-              color: 'var(--text-dark)',
-              border: 'none',
-              borderRadius: 0,
-              fontSize: '1.1rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              outline: 'none',
-              position: 'relative',
-              transition: 'background 0.2s, color 0.2s',
-            }}
-          >
-            {activeTab === 'journal' ? (
-              <span style={{
-                display: 'inline-block',
-                background: 'rgba(80, 200, 120, 0.15)',
-                borderRadius: 999,
-                padding: '0.7em 1.2em 0.5em 1.2em',
-                fontWeight: 800,
-                color: 'var(--accent-green)',
-                boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
-                marginTop: '0.3em',
-              }}>Journal</span>
-            ) : 'Journal'}
-          </button>
-          <button
-            className="tab-btn"
-            onClick={() => handleTabClick('settings')}
-            style={{
-              flex: 1,
-              padding: '1rem',
-              background: 'var(--cream-panel)',
-              color: 'var(--text-dark)',
-              border: 'none',
-              borderRadius: 0,
-              fontSize: '1.1rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              outline: 'none',
-              position: 'relative',
-              transition: 'background 0.2s, color 0.2s',
-            }}
-          >
-            {activeTab === 'settings' ? (
-              <span style={{
-                display: 'inline-block',
-                background: 'rgba(80, 200, 120, 0.15)',
-                borderRadius: 999,
-                padding: '0.7em 1.2em 0.5em 1.2em',
-                fontWeight: 800,
-                color: 'var(--accent-green)',
-                boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
-                marginTop: '0.3em',
-              }}>Settings</span>
-            ) : 'Settings'}
-          </button>
-        </div>
-        <div className="tab-content" style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
-          {activeTab === 'journal' && (
-            <div>
-              <h3>Journal</h3>
-              {questions.map((q, i) => (
-                <QuestionBox key={i} question={q} index={i} logAction={logAction} />
-              ))}
-            </div>
-          )}
-          {activeTab === 'settings' && (
-            <div>
-              <h3>Settings</h3>
-              <div style={{ marginBottom: '1rem' }}>
-                <p>Color Palette</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <button onClick={() => setTheme('unity')} className={theme === 'unity' ? 'primary' : ''}>Unity Mode</button>
-                  <button onClick={() => setTheme('dark')} className={theme === 'dark' ? 'primary' : ''}>Dark Mode</button>
-                  <button onClick={() => setTheme('light')} className={theme === 'light' ? 'primary' : ''}>Light Mode</button>
-                </div>
-              </div>
-              <div style={{ marginTop: '1.5rem' }}>
-                <p>Data Management</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <button onClick={handleExport} style={{ width: '100%', background: 'var(--accent-green)', color: 'white' }}>Export Data</button>
-                  <button onClick={handleErase} className="danger" style={{ width: '100%' }}>Erase All User Data</button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
       
-      {/* Resizer */}
-      <div
-        style={{
-          width: '4px',
-          background: 'var(--panel-border)',
-          cursor: 'col-resize',
-          position: 'relative'
-        }}
-        onMouseDown={handleMouseDown}
-      >
-        <div style={{
-          position: 'absolute',
-          left: '-2px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: '8px',
-          height: '40px',
-          background: 'var(--accent-color)',
-          borderRadius: '4px'
-        }} />
+      {/* Header with back button and toggle */}
+      <div className="tab-header" style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        zIndex: 100,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '0 32px',
+        height: '56px',
+        background: 'linear-gradient(90deg, #7b8ed6 0%, #8f6ed5 100%)',
+        borderBottom: '4px solid var(--tab-header-border)',
+        boxShadow: '0 2px 8px rgba(34,34,34,0.04)'
+      }}>
+        <button
+          onClick={handleBackToGames}
+          style={{
+            background: 'rgba(255,255,255,0.15)',
+            color: '#fff',
+            fontWeight: 'bold',
+            borderRadius: '10px',
+            padding: '0.7em 1.5em',
+            fontSize: '1.1rem',
+            border: 'none',
+            boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
+            transition: 'background 0.2s',
+            cursor: 'pointer',
+            marginRight: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5em',
+          }}
+        >
+          <span style={{fontSize: '1.2em', marginRight: '0.3em'}}>&larr;</span> Back to Games
+        </button>
+        <div style={{ flex: 1, textAlign: 'center', color: 'white', fontWeight: 700, fontSize: '1.5rem', letterSpacing: '0.02em', textShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+          {getGameDisplayName(selectedGame)}
+        </div>
+        <button
+          onClick={onToggleLayout}
+          style={{
+            background: 'rgba(255,255,255,0.15)',
+            color: '#fff',
+            fontWeight: 'bold',
+            borderRadius: '10px',
+            padding: '0.7em 1.5em',
+            fontSize: '1.1rem',
+            border: 'none',
+            boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
+            transition: 'background 0.2s',
+            cursor: 'pointer',
+            marginLeft: '16px',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          Dual Screen
+        </button>
       </div>
+      {/* Main content area */}
+      <div style={{
+        display: "flex",
+        flex: 1,
+        overflow: "hidden",
+        marginTop: '56px', // Push content below fixed header
+      }}>
+        <div
+          className="left-panel"
+          style={{
+            width: `${leftWidth}%`,
+            minWidth: `${MIN_WIDTH_PERCENT}%`,
+            maxWidth: `${MAX_WIDTH_PERCENT}%`,
+            display: "flex",
+            flexDirection: "column",
+            userSelect: isDragging ? 'none' : 'auto',
+            zIndex: 1,
+            position: 'relative',
+          }}
+        >
+          {/* Secondary tab bar for Journal/Settings */}
+          <div className="tab-header left-tab-header" style={{
+            display: 'flex',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            background: 'var(--cream-panel)',
+            borderBottom: '1px solid var(--panel-border)',
+            height: 40,
+            maxWidth: '320px',
+            width: '90%',
+            margin: '0 auto',
+            marginTop: '8px',
+            marginBottom: '12px',
+            borderRadius: '8px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+            position: 'relative',
+            zIndex: 1,
+            overflow: 'visible',
+          }}>
+            <button
+              className="tab-btn"
+              onClick={() => handleTabClick('journal')}
+              style={{
+                padding: '0.4em 1.2em',
+                marginRight: '8px',
+                background: 'var(--cream-panel)',
+                color: 'var(--text-dark)',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none',
+                position: 'relative',
+                transition: 'background 0.2s, color 0.2s',
+                boxShadow: 'none',
+              }}
+            >
+              {activeTab === 'journal' ? (
+                <span style={{
+                  display: 'inline-block',
+                  background: 'rgba(80, 200, 120, 0.10)',
+                  borderRadius: 999,
+                  padding: '0.3em 1em',
+                  fontWeight: 700,
+                  color: 'var(--accent-green)',
+                  boxShadow: 'none',
+                  fontSize: '1.05em',
+                }}>Journal</span>
+              ) : 'Journal'}
+            </button>
+            <button
+              className="tab-btn"
+              onClick={() => handleTabClick('settings')}
+              style={{
+                padding: '0.4em 1.2em',
+                background: 'var(--cream-panel)',
+                color: 'var(--text-dark)',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none',
+                position: 'relative',
+                transition: 'background 0.2s, color 0.2s',
+                boxShadow: 'none',
+              }}
+            >
+              {activeTab === 'settings' ? (
+                <span style={{
+                  display: 'inline-block',
+                  background: 'rgba(80, 200, 120, 0.10)',
+                  borderRadius: 999,
+                  padding: '0.3em 1em',
+                  fontWeight: 700,
+                  color: 'var(--accent-green)',
+                  boxShadow: 'none',
+                  fontSize: '1.05em',
+                }}>Settings</span>
+              ) : 'Settings'}
+            </button>
+          </div>
+          <div className="tab-content" style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+            {activeTab === 'journal' && (
+              <div>
+                <h3>Journal</h3>
+                {questions.map((q, i) => (
+                  <QuestionBox key={i} question={q} index={i} logAction={logAction} />
+                ))}
+              </div>
+            )}
+            {activeTab === 'settings' && (
+              <div>
+                <h3>Settings</h3>
+                <div style={{ marginBottom: '1rem' }}>
+                  <p>Color Palette</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <button onClick={() => setTheme('unity')} className={theme === 'unity' ? 'primary' : ''}>Unity Mode</button>
+                    <button onClick={() => setTheme('dark')} className={theme === 'dark' ? 'primary' : ''}>Dark Mode</button>
+                    <button onClick={() => setTheme('light')} className={theme === 'light' ? 'primary' : ''}>Light Mode</button>
+                  </div>
+                </div>
+                <div style={{ marginTop: '1.5rem' }}>
+                  <p>Data Management</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <button onClick={handleExport} style={{ width: '100%', background: 'var(--accent-green)', color: 'white' }}>Export Data</button>
+                    <button onClick={handleErase} className="danger" style={{ width: '100%' }}>Erase All User Data</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Resizer */}
+        <div
+          style={{
+            width: '4px',
+            background: 'var(--panel-border)',
+            cursor: 'col-resize',
+            position: 'relative'
+          }}
+          onMouseDown={handleMouseDown}
+        >
+          <div style={{
+            position: 'absolute',
+            left: '-2px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: '8px',
+            height: '40px',
+            background: 'var(--accent-color)',
+            borderRadius: '4px'
+          }} />
+        </div>
 
-      {/* Right Panel: Show PlotComponent */}
-      <div
-        className="right-panel"
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          background: "var(--offwhite-bg)",
-          padding: "20px",
-          overflowX: "hidden"
-        }}
-      >
-        <PlotComponent
-          plotLabel="Data Visualization"
-          theme={theme}
-          data={[]}
-          logAction={logAction}
-        />
+        {/* Right Panel: Show PlotComponent */}
+        <div
+          className="right-panel"
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            background: "var(--offwhite-bg)",
+            padding: "20px",
+            overflowX: "hidden"
+          }}
+        >
+          <PlotComponent
+            plotLabel="Data Visualization"
+            theme={theme}
+            data={[]}
+            logAction={logAction}
+          />
+        </div>
       </div>
     </div>
   );

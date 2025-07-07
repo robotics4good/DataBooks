@@ -1,11 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, ref, push } from "./firebase";
-import { getNistTime } from "./utils/timeUtils";
 import dataSyncService from "./services/dataSyncService";
 
 const UserLogContext = createContext();
 
-export function UserLogProvider({ children }) {
+export const useUserLog = () => {
+  const context = useContext(UserLogContext);
+  if (!context) {
+    throw new Error('useUserLog must be used within a UserLogProvider');
+  }
+  return context;
+};
+
+export const UserLogProvider = ({ children }) => {
   const [userActions, setUserActions] = useState([]);
 
   // Get the selected player from localStorage, fallback to 'S1' if not set
@@ -35,14 +42,9 @@ export function UserLogProvider({ children }) {
     };
   }, []);
 
-  // Fetch UTC time from NIST servers
-  async function getNistUtcTime() {
-    return await getNistTime();
-  }
-
   // Make logAction async to await the NIST time
   const logAction = async (type, details) => {
-    const timestamp = await getNistUtcTime();
+    const timestamp = new Date().toISOString();
     const cleanDetails = details ?? "";
     
     const action = {
@@ -69,7 +71,6 @@ export function UserLogProvider({ children }) {
       console.log("📝 Logged locally only (streaming disabled):", action);
     }
   };
-
 
   const exportLog = () => {
     const csv = [
@@ -126,8 +127,4 @@ export function UserLogProvider({ children }) {
       {children}
     </UserLogContext.Provider>
   );
-}
-
-export function useUserLog() {
-  return useContext(UserLogContext);
-} 
+}; 

@@ -207,14 +207,8 @@ export function useESPData(enableRealTime = false) {
     totalPackets: espData.length,
     uniqueStudents: getDeviceIds().length,
     timeRange: espData.length > 0 ? {
-      start: new Date(Math.min(...espData.map(item => item.timestamp || 0))),
-      end: new Date(Math.max(...espData.map(item => item.timestamp || 0)))
-    } : null,
-    
-    // San Diego timezone info
-    timezoneInfo: {
-      timezone: "America/Los_Angeles",
-      abbreviation: new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles", timeZoneName: "short" }).split(" ").pop()
-    }
+      start: espData[0]?.timestamp,
+      end: espData[espData.length - 1]?.timestamp
+    } : null
   };
 } 

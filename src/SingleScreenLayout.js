@@ -146,7 +146,20 @@ const styles = {
   }
 };
 
-const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
+// Helper to get display name for header
+const getGameDisplayName = (selectedGame) => {
+  if (!selectedGame) return "";
+  if (typeof selectedGame === "string") {
+    return selectedGame.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  if (selectedGame.name) return selectedGame.name;
+  if (selectedGame.key) {
+    return selectedGame.key.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  return String(selectedGame);
+};
+
+const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onToggleLayout }) => {
   const { logAction, exportLog, clearLog, exportLogAsJson } = useUserLog();
   const [activeTab, setActiveTab] = useState('plot');
   const [notification, setNotification] = useState({ message: '', type: '' });
@@ -213,7 +226,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
   };
 
   const handlePlotTypeChange = (plotNumber, newType) => {
-    logAction(`Plot ${plotNumber} type changed to: ${newType}`);
+    logAction(`Plot ${plotNumber} type changed to ${newType}`);
     if (plotNumber === 1) {
       setPlot1Type(newType);
     } else {
@@ -277,101 +290,184 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
       {notification.message && (
         <div className={`notification ${notification.type}`}>{notification.message}</div>
       )}
-      {/* Tab Header */}
-      <div style={{ ...styles.tabHeader, borderBottom: 'none' }}>
+      
+      {/* Header with back button and toggle */}
+      <div className="tab-header" style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        zIndex: 100,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '0 32px',
+        height: '56px',
+        background: 'linear-gradient(90deg, #7b8ed6 0%, #8f6ed5 100%)',
+        borderBottom: 'none',
+        boxShadow: '0 2px 8px rgba(34,34,34,0.04)'
+      }}>
         <button
-          onClick={() => setActiveTab('plot')}
+          onClick={handleBackToGames}
           style={{
-            flex: 1,
-            padding: '1rem',
-            background: 'var(--cream-panel)',
-            color: 'var(--text-dark)',
-            border: 'none',
-            borderRadius: 0,
+            background: 'rgba(255,255,255,0.15)',
+            color: '#fff',
+            fontWeight: 'bold',
+            borderRadius: '10px',
+            padding: '0.7em 1.5em',
             fontSize: '1.1rem',
-            fontWeight: 600,
+            border: 'none',
+            boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
+            transition: 'background 0.2s',
             cursor: 'pointer',
-            outline: 'none',
-            position: 'relative',
-            transition: 'background 0.2s, color 0.2s',
+            marginRight: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5em',
           }}
         >
-          {activeTab === 'plot' ? (
-            <span style={{
-              display: 'inline-block',
-              background: 'rgba(80, 200, 120, 0.15)',
-              borderRadius: 999,
-              padding: '0.7em 1.2em 0.5em 1.2em',
-              fontWeight: 800,
-              color: 'var(--accent-green)',
-              boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
-              marginTop: '0.3em',
-            }}>Plot</span>
-          ) : 'Plot'}
+          <span style={{fontSize: '1.2em', marginRight: '0.3em'}}>&larr;</span> Back to Games
         </button>
+        <div style={{ flex: 1, textAlign: 'center', color: 'white', fontWeight: 700, fontSize: '1.5rem', letterSpacing: '0.02em', textShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+          {getGameDisplayName(selectedGame)}
+        </div>
         <button
-          onClick={() => setActiveTab('journal')}
+          onClick={onToggleLayout}
           style={{
-            flex: 1,
-            padding: '1rem',
-            background: 'var(--cream-panel)',
-            color: 'var(--text-dark)',
-            border: 'none',
-            borderRadius: 0,
+            background: 'rgba(255,255,255,0.15)',
+            color: '#fff',
+            fontWeight: 'bold',
+            borderRadius: '10px',
+            padding: '0.7em 1.5em',
             fontSize: '1.1rem',
-            fontWeight: 600,
+            border: 'none',
+            boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
+            transition: 'background 0.2s',
             cursor: 'pointer',
-            outline: 'none',
-            position: 'relative',
-            transition: 'background 0.2s, color 0.2s',
+            marginLeft: '16px',
+            display: 'flex',
+            alignItems: 'center',
           }}
         >
-          {activeTab === 'journal' ? (
-            <span style={{
-              display: 'inline-block',
-              background: 'rgba(80, 200, 120, 0.15)',
-              borderRadius: 999,
-              padding: '0.7em 1.2em 0.5em 1.2em',
-              fontWeight: 800,
-              color: 'var(--accent-green)',
-              boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
-              marginTop: '0.3em',
-            }}>Journal</span>
-          ) : 'Journal'}
-        </button>
-        <button
-          onClick={() => setActiveTab('settings')}
-          style={{
-            flex: 1,
-            padding: '1rem',
-            background: 'var(--cream-panel)',
-            color: 'var(--text-dark)',
-            border: 'none',
-            borderRadius: 0,
-            fontSize: '1.1rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            outline: 'none',
-            position: 'relative',
-            transition: 'background 0.2s, color 0.2s',
-          }}
-        >
-          {activeTab === 'settings' ? (
-            <span style={{
-              display: 'inline-block',
-              background: 'rgba(80, 200, 120, 0.15)',
-              borderRadius: 999,
-              padding: '0.7em 1.2em 0.5em 1.2em',
-              fontWeight: 800,
-              color: 'var(--accent-green)',
-              boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
-              marginTop: '0.3em',
-            }}>Settings</span>
-          ) : 'Settings'}
+          Single Screen
         </button>
       </div>
-      {/* Content Area */}
-      <div style={styles.contentArea}>
+      {/* Main content area */}
+      <div style={{
+        marginTop: '56px', // Push content below fixed header
+        display: "flex",
+        flexDirection: "column"
+      }}>
+        {/* Full-width tab bar for Plot/Journal/Settings */}
+        <div className="tab-header single-tab-header" style={{
+          display: 'flex',
+          justifyContent: 'space-evenly',
+          alignItems: 'center',
+          background: 'var(--offwhite-bg)',
+          borderBottom: 'none',
+          height: 48,
+          width: '100%',
+          margin: 0,
+          marginBottom: '12px',
+          borderRadius: 0,
+          boxShadow: 'none',
+          position: 'relative',
+          zIndex: 1,
+        }}>
+          <button
+            className="tab-btn"
+            onClick={() => setActiveTab('plot')}
+            style={{
+              background: 'none',
+              color: 'var(--text-dark)',
+              border: 'none',
+              borderRadius: 0,
+              fontSize: '1.15rem',
+              fontWeight: activeTab === 'plot' ? 700 : 600,
+              cursor: 'pointer',
+              outline: 'none',
+              position: 'relative',
+              transition: 'color 0.2s',
+              boxShadow: 'none',
+              padding: 0,
+              minWidth: '120px',
+            }}
+          >
+            {activeTab === 'plot' ? (
+              <span style={{
+                display: 'inline-block',
+                background: 'rgba(80, 200, 120, 0.13)',
+                borderRadius: 999,
+                padding: '0.4em 1.5em',
+                fontWeight: 700,
+                color: 'var(--accent-green)',
+                fontSize: '1.1em',
+              }}>Plot</span>
+            ) : 'Plot'}
+          </button>
+          <button
+            className="tab-btn"
+            onClick={() => setActiveTab('journal')}
+            style={{
+              background: 'none',
+              color: 'var(--text-dark)',
+              border: 'none',
+              borderRadius: 0,
+              fontSize: '1.15rem',
+              fontWeight: activeTab === 'journal' ? 700 : 600,
+              cursor: 'pointer',
+              outline: 'none',
+              position: 'relative',
+              transition: 'color 0.2s',
+              boxShadow: 'none',
+              padding: 0,
+              minWidth: '120px',
+            }}
+          >
+            {activeTab === 'journal' ? (
+              <span style={{
+                display: 'inline-block',
+                background: 'rgba(80, 200, 120, 0.13)',
+                borderRadius: 999,
+                padding: '0.4em 1.5em',
+                fontWeight: 700,
+                color: 'var(--accent-green)',
+                fontSize: '1.1em',
+              }}>Journal</span>
+            ) : 'Journal'}
+          </button>
+          <button
+            className="tab-btn"
+            onClick={() => setActiveTab('settings')}
+            style={{
+              background: 'none',
+              color: 'var(--text-dark)',
+              border: 'none',
+              borderRadius: 0,
+              fontSize: '1.15rem',
+              fontWeight: activeTab === 'settings' ? 700 : 600,
+              cursor: 'pointer',
+              outline: 'none',
+              position: 'relative',
+              transition: 'color 0.2s',
+              boxShadow: 'none',
+              padding: 0,
+              minWidth: '120px',
+            }}
+          >
+            {activeTab === 'settings' ? (
+              <span style={{
+                display: 'inline-block',
+                background: 'rgba(80, 200, 120, 0.13)',
+                borderRadius: 999,
+                padding: '0.4em 1.5em',
+                fontWeight: 700,
+                color: 'var(--accent-green)',
+                fontSize: '1.1em',
+              }}>Settings</span>
+            ) : 'Settings'}
+          </button>
+        </div>
         {activeTab === 'plot' && (
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={styles.plotRow}>

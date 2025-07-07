@@ -1,7 +1,6 @@
 // dataSyncService.js - Service for syncing journal and user action data to Firebase
 import { getCurrentSanDiegoTime } from '../utils/timeUtils';
-import { db } from '../firebase';
-import { ref, push, set } from 'firebase/database';
+import { db, ref, push, set } from '../firebase';
 
 class DataSyncService {
   constructor() {
@@ -294,7 +293,7 @@ class DataSyncService {
         firebaseKey: newSyncRef.key,
         uploadedAt: new Date().toISOString()
       });
-
+      
       return newSyncRef.key;
     } catch (error) {
       console.error('Failed to send data to Firebase:', error);
