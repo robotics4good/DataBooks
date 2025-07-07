@@ -3,11 +3,12 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./LandingPage";
 import LoginPage from "./LoginPage";
 import GamePage from "./GamePage";
+import ControlPanel from "./ControlPanel";
 import { UserLogProvider } from "./UserLog";
 import "./App.css";
 
 const games = [
-  { name: "Outbreak Squad", key: "outbreak-squad", enabled: true },
+  { name: "Alien Invasion", key: "alien-invasion", enabled: true },
   { name: "Whisper Web", key: "whisper-web", enabled: false },
   { name: "Logistics League", key: "logistics-league", enabled: false },
   { name: "Pollination Party", key: "pollination-party", enabled: false },
@@ -41,6 +42,7 @@ const App = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login/:gameKey" element={<LoginPage />} />
             <Route path="/games/:gameKey" element={<GamePage />} />
+            <Route path="/control-panel" element={<ControlPanel />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

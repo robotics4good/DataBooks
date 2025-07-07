@@ -44,26 +44,20 @@ export function usePlotState(plotLabel, logAction) {
     }
   };
 
-  // X variable toggle handler
+  // X variable toggle handler (single-select)
   const handleXVariableToggle = (variable) => {
     const isSelected = xVars.includes(variable);
-    const newXVars = isSelected 
-      ? xVars.filter(x => x !== variable) 
-      : [...xVars, variable];
-    
+    const newXVars = isSelected ? [] : [variable];
     setXVars(newXVars);
     if (logAction) {
       logAction(`${plotLabel} x variable toggled: ${variable}`);
     }
   };
 
-  // Y variable toggle handler
+  // Y variable toggle handler (single-select)
   const handleYVariableToggle = (variable) => {
     const isSelected = yVars.includes(variable);
-    const newYVars = isSelected 
-      ? yVars.filter(y => y !== variable) 
-      : [...yVars, variable];
-    
+    const newYVars = isSelected ? [] : [variable];
     setYVars(newYVars);
     if (logAction) {
       logAction(`${plotLabel} y variable toggled: ${variable}`);
@@ -100,6 +94,20 @@ export function usePlotState(plotLabel, logAction) {
     }
   };
 
+  // Device filter select all/deselect all handlers
+  const handleSelectAllDevices = () => {
+    setPersonFilter(playerNames.reduce((acc, name) => ({ ...acc, [name]: true }), {}));
+    if (logAction) {
+      logAction(`${plotLabel} device filter: select all`);
+    }
+  };
+  const handleDeselectAllDevices = () => {
+    setPersonFilter(playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
+    if (logAction) {
+      logAction(`${plotLabel} device filter: deselect all`);
+    }
+  };
+
   return {
     // State
     plotType,
@@ -122,5 +130,7 @@ export function usePlotState(plotLabel, logAction) {
     handleHistogramXVariableToggle,
     handlePieVariableSelect,
     handlePersonFilterToggle,
+    onSelectAllDevices: handleSelectAllDevices,
+    onDeselectAllDevices: handleDeselectAllDevices,
   };
 } 

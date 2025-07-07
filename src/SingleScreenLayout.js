@@ -1,5 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
-import OutbreakSquad from "./games/OutbreakSquad";
+import AlienInvasion from "./games/AlienInvasion";
 import WhisperWeb from "./games/WhisperWeb";
 import LogisticsLeague from "./games/LogisticsLeague";
 import PollinationParty from "./games/PollinationParty";
@@ -55,8 +55,8 @@ const QuestionBox = ({ question, index, logAction }) => {
 
 const GameContent = ({ selectedGame, theme }) => {
   switch (selectedGame) {
-    case 'outbreak-squad':
-      return <OutbreakSquad theme={theme} />;
+    case 'alien-invasion':
+      return <AlienInvasion theme={theme} />;
     case 'whisper-web':
       return <WhisperWeb />;
     case 'logistics-league':
@@ -83,45 +83,28 @@ const styles = {
   tabHeader: {
     display: "flex",
     background: "var(--cream-panel)",
-    borderBottom: "1.5px solid var(--panel-border)",
-    padding: "0 8px",
-    height: 44,
+    borderBottom: "2px solid var(--panel-border)",
+    height: 48,
     alignItems: 'flex-end',
     boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
   },
-  tabButton: isActive => ({
-    padding: "0 18px",
-    height: 40,
-    border: "none",
-    background: "none",
-    color: isActive ? "var(--accent-color)" : "var(--text-dark)",
-    cursor: "pointer",
-    fontSize: "1rem",
-    fontWeight: isActive ? 700 : 500,
-    borderBottom: isActive ? "3px solid var(--accent-color)" : "3px solid transparent",
-    transition: 'color 0.2s, border-bottom 0.2s',
-    outline: 'none',
-    marginRight: 8,
-    backgroundColor: 'transparent',
-    borderRadius: '6px 6px 0 0',
-  }),
   contentArea: {
     minHeight: '100vh',
     padding: 0,
-    paddingBottom: '2rem'
+    paddingBottom: 0
   },
   plotRow: {
     display: "flex",
     gap: "20px",
-    paddingBottom: "2rem"
+    paddingBottom: 0
   },
   plotContainer: {
     flex: 1,
     minWidth: 0,
     minHeight: 0,
     padding: '20px',
-    paddingBottom: '1.5rem',
-    marginBottom: '1.5rem',
+    paddingBottom: 0,
+    marginBottom: '2rem',
     boxSizing: 'border-box'
   },
   card: {
@@ -295,24 +278,96 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
         <div className={`notification ${notification.type}`}>{notification.message}</div>
       )}
       {/* Tab Header */}
-      <div style={styles.tabHeader}>
+      <div style={{ ...styles.tabHeader, borderBottom: 'none' }}>
         <button
           onClick={() => setActiveTab('plot')}
-          style={styles.tabButton(activeTab === 'plot')}
+          style={{
+            flex: 1,
+            padding: '1rem',
+            background: 'var(--cream-panel)',
+            color: 'var(--text-dark)',
+            border: 'none',
+            borderRadius: 0,
+            fontSize: '1.1rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            outline: 'none',
+            position: 'relative',
+            transition: 'background 0.2s, color 0.2s',
+          }}
         >
-          Plot
+          {activeTab === 'plot' ? (
+            <span style={{
+              display: 'inline-block',
+              background: 'rgba(80, 200, 120, 0.15)',
+              borderRadius: 999,
+              padding: '0.7em 1.2em 0.5em 1.2em',
+              fontWeight: 800,
+              color: 'var(--accent-green)',
+              boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
+              marginTop: '0.3em',
+            }}>Plot</span>
+          ) : 'Plot'}
         </button>
         <button
           onClick={() => setActiveTab('journal')}
-          style={styles.tabButton(activeTab === 'journal')}
+          style={{
+            flex: 1,
+            padding: '1rem',
+            background: 'var(--cream-panel)',
+            color: 'var(--text-dark)',
+            border: 'none',
+            borderRadius: 0,
+            fontSize: '1.1rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            outline: 'none',
+            position: 'relative',
+            transition: 'background 0.2s, color 0.2s',
+          }}
         >
-          Journal
+          {activeTab === 'journal' ? (
+            <span style={{
+              display: 'inline-block',
+              background: 'rgba(80, 200, 120, 0.15)',
+              borderRadius: 999,
+              padding: '0.7em 1.2em 0.5em 1.2em',
+              fontWeight: 800,
+              color: 'var(--accent-green)',
+              boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
+              marginTop: '0.3em',
+            }}>Journal</span>
+          ) : 'Journal'}
         </button>
         <button
           onClick={() => setActiveTab('settings')}
-          style={styles.tabButton(activeTab === 'settings')}
+          style={{
+            flex: 1,
+            padding: '1rem',
+            background: 'var(--cream-panel)',
+            color: 'var(--text-dark)',
+            border: 'none',
+            borderRadius: 0,
+            fontSize: '1.1rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            outline: 'none',
+            position: 'relative',
+            transition: 'background 0.2s, color 0.2s',
+          }}
         >
-          Settings
+          {activeTab === 'settings' ? (
+            <span style={{
+              display: 'inline-block',
+              background: 'rgba(80, 200, 120, 0.15)',
+              borderRadius: 999,
+              padding: '0.7em 1.2em 0.5em 1.2em',
+              fontWeight: 800,
+              color: 'var(--accent-green)',
+              boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
+              marginTop: '0.3em',
+            }}>Settings</span>
+          ) : 'Settings'}
         </button>
       </div>
       {/* Content Area */}

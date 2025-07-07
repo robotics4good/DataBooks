@@ -18,7 +18,7 @@ const playerNames = [
 ];
 
 const games = [
-  { name: "Outbreak Squad", key: "outbreak-squad", enabled: true },
+  { name: "Alien Invasion", key: "alien-invasion", enabled: true },
   { name: "Whisper Web", key: "whisper-web", enabled: false },
   { name: "Logistics League", key: "logistics-league", enabled: false },
   { name: "Pollination Party", key: "pollination-party", enabled: false },
@@ -43,6 +43,8 @@ const LoginPage = () => {
 
   const handleStartGame = () => {
     if (selectedPlayer) {
+      // Store the selected player in localStorage for use throughout the app
+      localStorage.setItem('selectedPlayer', selectedPlayer);
       logAction(`Player logged in: ${selectedPlayer}`);
       navigate(`/games/${gameKey}`);
     }

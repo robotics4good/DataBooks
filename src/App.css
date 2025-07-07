@@ -232,7 +232,7 @@ input::placeholder, textarea::placeholder {
   background: linear-gradient(135deg, #b993d6 0%, #8ca6db 50%, #4b306a 100%) !important;
 }
 
-/* Dark green for Outbreak Squad button */
+/* Dark green for Alien Invasion button */
 .dark-green {
   background: var(--dark-green) !important;
   color: var(--text-light) !important;
@@ -244,7 +244,7 @@ input::placeholder, textarea::placeholder {
   color: var(--text-dark) !important;
 }
 
-/* Dark red for Outbreak Squad button */
+/* Dark red for Alien Invasion button */
 .dark-red {
   background: var(--dark-red) !important;
   color: var(--text-light) !important;

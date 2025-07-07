@@ -8,7 +8,7 @@ const LandingPage = () => {
   const { logAction } = useUserLog();
 
   const gameRoutes = {
-    "Outbreak Squad": "/login/outbreak-squad",
+    "Alien Invasion": "/login/alien-invasion",
     "Whisper Web": "/login/whisper-web",
     "Logistics League": "/login/logistics-league",
     "Pollination Party": "/login/pollination-party",

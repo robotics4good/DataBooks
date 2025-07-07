@@ -1,74 +1,73 @@
-// plots/line_plot.js
+// plots/line_plot.js - Game-controlled data access
 import React from 'react';
 import { ResponsiveLine } from "@nivo/line";
+import { formatSanDiegoTimeOnly } from '../utils/timeUtils';
 
-const sampleData = [
-  {
-    id: 'Series 1',
-    data: [
-      { x: 'A', y: 10 },
-      { x: 'B', y: 20 },
-      { x: 'C', y: 15 },
-      { x: 'D', y: 25 },
-    ],
-  },
-  {
-    id: 'Series 2',
-    data: [
-      { x: 'A', y: 5 },
-      { x: 'B', y: 15 },
-      { x: 'C', y: 10 },
-      { x: 'D', y: 20 },
-    ],
-  },
-];
-
-const LinePlot = ({ data = sampleData, theme }) => {
-  const nivoTheme = {
-    axis: {
-      domain: {
-        line: {
-          stroke: (theme === 'dark') ? '#ffffff' : '#000000',
-        },
-      },
-      ticks: {
-        line: {
-          stroke: (theme === 'dark') ? '#ffffff' : '#000000',
-        },
-        text: {
-          fill: (theme === 'dark') ? '#ffffff' : '#000000',
-        },
-      },
-      legend: {
-        text: {
-          fill: (theme === 'dark') ? '#ffffff' : '#000000',
-        },
-      },
-    },
-    grid: {
-      line: {
-        stroke: theme === 'dark' ? '#555555' : '#d3d3d3',
-        strokeWidth: 1,
-      },
-    },
+const LinePlot = ({ data = [] }) => {
+  // Transform data for line plot if provided
+  const getLineData = () => {
+    if (!data || !data.length) return [];
+    
+    // Transform ESP data into line plot format
+    const transformedData = data.map(item => ({
+      x: formatSanDiegoTimeOnly(item.timestamp),
+      y: item.interaction || 0
+    }));
+    
+    return [{
+      id: 'ESP Interactions',
+      data: transformedData
+    }];
   };
+
+  const lineData = getLineData();
+
+  // No data state
+  if (!lineData.length || !lineData[0]?.data?.length) {
+    return (
+      <div style={{ 
+        height: "100%", 
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "1rem",
+        color: "#666"
+      }}>
+        No data to display currently
+      </div>
+    );
+  }
+
+  // Calculate dynamic y scale based on actual data
+  const allValues = lineData.flatMap(series => series.data.map(point => point.y)).filter(y => typeof y === 'number');
+  const maxY = allValues.length > 0 ? Math.max(...allValues) : 100;
+  const minY = allValues.length > 0 ? Math.min(...allValues) : 0;
   
   return (
     <div style={{ height: "100%", width: "100%" }}>
       <ResponsiveLine
-        data={data}
+        data={lineData}
         margin={{ top: 60, right: 90, bottom: 90, left: 90 }}
         xScale={{ type: "point" }}
-        yScale={{ type: "linear", min: 0, max: 30 }}
+        yScale={{ 
+          type: "linear", 
+          min: Math.max(0, minY - (maxY - minY) * 0.1), 
+          max: maxY + (maxY - minY) * 0.1 
+        }}
         axisBottom={{
-          legend: "X",
+          legend: "Time",
           legendOffset: 56,
           legendPosition: "middle",
           tickRotation: -45,
         }}
-        axisLeft={{ legend: "Y", legendOffset: -60, legendPosition: "middle" }}
+        axisLeft={{ 
+          legend: "Interaction Value", 
+          legendOffset: -60, 
+          legendPosition: "middle" 
+        }}
         colors={{ scheme: "category10" }}
-        pointSize={10}
+        pointSize={8}
         pointBorderWidth={2}
         useMesh={true}
         animate={false}
@@ -80,7 +79,34 @@ const LinePlot = ({ data = sampleData, theme }) => {
           precision: 0.01,
           velocity: 0,
         }}
-        theme={nivoTheme}
+        theme={{
+          axis: {
+            domain: {
+              line: {
+                stroke: '#000000',
+              },
+            },
+            ticks: {
+              line: {
+                stroke: '#000000',
+              },
+              text: {
+                fill: '#000000',
+              },
+            },
+            legend: {
+              text: {
+                fill: '#000000',
+              },
+            },
+          },
+          grid: {
+            line: {
+              stroke: '#d3d3d3',
+              strokeWidth: 1,
+            },
+          },
+        }}
         legends={[
             {
                 anchor: 'bottom-right',

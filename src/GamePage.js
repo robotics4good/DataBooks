@@ -12,7 +12,7 @@ const GamePage = () => {
   const [dualScreen, setDualScreen] = useState(false);
 
   const games = [
-    { name: "Outbreak Squad", key: "outbreak-squad", enabled: true },
+    { name: "Alien Invasion", key: "alien-invasion", enabled: true },
     { name: "Whisper Web", key: "whisper-web", enabled: false },
     { name: "Logistics League", key: "logistics-league", enabled: false },
     { name: "Pollination Party", key: "pollination-party", enabled: false },

@@ -1,74 +1,166 @@
-# Getting Started with Create React App
+# DataBooks - Interactive Data Science Learning Platform
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React-based educational platform that integrates real-time ESP device data with interactive games and data visualization for teaching data science concepts.
+
+## Features
+
+- **Real-time ESP Device Integration**: Direct Firebase connection for immediate data processing
+- **Interactive Games**: Alien Invasion game that responds to ESP device interactions
+- **Data Visualization**: Real-time charts and plots using Plotly
+- **Control Panel**: Comprehensive testing and monitoring interface
+- **Journal System**: User activity logging and reflection
+- **Firebase Backend**: Scalable, real-time data storage and synchronization
+
+## Architecture
+
+### Frontend
+- **React**: Modern UI with hooks and context
+- **Firebase**: Real-time database and authentication
+- **Plotly**: Interactive data visualization
+- **Custom Hooks**: ESP data management and real-time updates
+
+### Data Pipeline
+- **ESP Devices**: Physical devices sending button presses, status, and proximity data
+- **Firebase Realtime Database**: Immediate data storage and synchronization
+- **Real-time Updates**: Live data streaming to games and visualizations
+- **Session Management**: Organized data storage by user sessions
+
+### ESP Data Format
+```json
+{
+  "id": "ESP_001",
+  "timestamp": "2024-01-01T12:00:00.000Z",
+  "buttonA": 1,
+  "buttonB": 0,
+  "status": 0.75,
+  "beaconArray": 1,
+  "totalButtons": 1,
+  "hasInteraction": true,
+  "receivedAt": "2024-01-01T12:00:00.000Z",
+  "sessionId": "user-session-123"
+}
+```
+
+## Getting Started
+
+### Prerequisites
+- Node.js (v14 or higher)
+- npm or yarn
+- Firebase project with Realtime Database
+
+### Installation
+1. Clone the repository
+2. Navigate to the DataBooks directory
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+4. Set up Firebase configuration:
+   - Create a `.env` file in the DataBooks directory
+   - Add your Firebase configuration:
+   ```
+   REACT_APP_FIREBASE_API_KEY=your_api_key
+   REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+   REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+   REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   REACT_APP_FIREBASE_APP_ID=your_app_id
+   REACT_APP_FIREBASE_DATABASE_URL=https://your_project.firebaseio.com
+   ```
+
+### Running the Application
+1. Start the development server:
+   ```bash
+   npm start
+   ```
+2. Open [http://localhost:3000](http://localhost:3000) to view the app
+
+### Testing ESP Devices
+The application includes built-in ESP device simulation:
+
+1. **Browser-based testing**: Use the "Send Test Packet" and "Start Simulation" buttons in the Control Panel
+2. **Node.js testing** (optional): For advanced testing scenarios:
+   ```bash
+   # Send a single test packet
+   npm run test-esp-single
+
+   # Start continuous simulation (2-second intervals)
+   npm run test-esp
+
+   # Start fast simulation (0.5-second intervals)
+   npm run test-esp-fast
+   ```
 
 ## Available Scripts
 
-In the project directory, you can run:
+- `npm start` - Runs the app in development mode
+- `npm run build` - Builds the app for production
+- `npm test` - Launches the test runner
+- `npm run test-esp` - Starts ESP device simulation
+- `npm run test-esp-single` - Sends a single test packet
+- `npm run test-esp-fast` - Fast simulation mode
 
-### `npm start`
+## Project Structure
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```
+src/
+├── games/           # Interactive games (Alien Invasion, etc.)
+├── plots/           # Data visualization components
+├── services/        # Firebase and data services
+├── hooks/           # Custom React hooks
+├── utils/           # Utility functions and ESP simulator
+├── ControlPanel.js  # Main control interface
+├── GameLayout.js    # Dual-screen layout system
+├── App.js           # Main application component
+└── firebase.js      # Firebase configuration
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Key Components
 
-### `node server.js`
+### Control Panel
+- Real-time ESP statistics
+- Device activity monitoring
+- Test controls and simulation
+- Data visualization
+- Server data inspection
 
-Start the local Websocket server. Run in order to test the game file websockets correctly.
+### Alien Invasion Game
+- Real-time ESP data integration
+- Dynamic alien ship generation based on device interactions
+- Interactive gameplay with data science concepts
 
-### `npm test`
+### ESP Data Management
+- Real-time data streaming from Firebase
+- Automatic data processing and enhancement
+- Session-based data organization
+- Historical data analysis
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Firebase Database Structure
 
-### `npm run build`
+```
+firebase-database/
+├── devicePackets/           # Individual ESP packets
+│   ├── ESP_001/            # Device-specific data
+│   └── ESP_002/
+├── sessions/               # User session data
+│   ├── session-1/
+│   │   ├── devicePackets/  # Session-specific packets
+│   │   └── userActions/    # User interactions
+│   └── session-2/
+└── stats/                  # Aggregated statistics
+    ├── totalPackets
+    ├── activeDevices
+    └── interactions
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Contributing
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## License
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This project is licensed under the MIT License.

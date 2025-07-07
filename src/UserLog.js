@@ -1,51 +1,73 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, ref, push } from "./firebase";
+import { getNistTime } from "./utils/timeUtils";
+import dataSyncService from "./services/dataSyncService";
 
 const UserLogContext = createContext();
 
 export function UserLogProvider({ children }) {
   const [userActions, setUserActions] = useState([]);
 
-  // For now, use a static ID (option 1: S1)
-  const userId = 'S1';
+  // Get the selected player from localStorage, fallback to 'S1' if not set
+  const userId = localStorage.getItem('selectedPlayer') || 'S1';
 
-  // Fetch UTC time from worldtimeapi.org (NIST/UTC)
-  async function getNistUtcTime() {
+  // Load user actions from localStorage on mount
+  useEffect(() => {
     try {
-      const res = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
-      if (!res.ok) throw new Error('Failed to fetch time');
-      const data = await res.json();
-      return data.utc_datetime;
-    } catch (e) {
-      // Fallback to local time if API fails
-      return new Date().toISOString();
+      const stored = localStorage.getItem('userActions');
+      if (stored) {
+        const actions = JSON.parse(stored);
+        setUserActions(actions);
+      }
+    } catch (error) {
+      console.warn('Failed to load user actions from localStorage:', error);
     }
+  }, []);
+
+  // Data sync service is OFF by default - user must manually enable
+  useEffect(() => {
+    // Don't start sync automatically - let user control it
+    console.log('Data sync service ready - streaming is OFF by default');
+    
+    // Cleanup on unmount
+    return () => {
+      dataSyncService.stopSync();
+    };
+  }, []);
+
+  // Fetch UTC time from NIST servers
+  async function getNistUtcTime() {
+    return await getNistTime();
   }
 
   // Make logAction async to await the NIST time
   const logAction = async (type, details) => {
     const timestamp = await getNistUtcTime();
     const cleanDetails = details ?? "";
-    setUserActions(prev => [
-      ...prev,
-      {
-        id: userId,
-        timestamp,
-        type,
-        details: cleanDetails // now always a string
-      }
-    ]);
-
+    
     const action = {
       id: userId,
       timestamp,
       type,
       details: cleanDetails
     };
-    const userActivityRef = ref(db, `userActivity`);
-    push(userActivityRef, action);
-  
-    console.log("🔥 Logged locally & sent to Firebase:", action);
+
+    // Update local state
+    setUserActions(prev => {
+      const newActions = [...prev, action];
+      // Store in localStorage
+      dataSyncService.updateUserActions(newActions);
+      return newActions;
+    });
+
+    // Only send to Firebase if streaming is enabled
+    if (dataSyncService.getSyncStatus().isRunning) {
+      const userActivityRef = ref(db, `userActivity`);
+      push(userActivityRef, action);
+      console.log("🔥 Logged locally & sent to Firebase:", action);
+    } else {
+      console.log("📝 Logged locally only (streaming disabled):", action);
+    }
   };
 
 
@@ -77,10 +99,30 @@ export function UserLogProvider({ children }) {
 
   const clearLog = () => {
     setUserActions([]);
+    // Clear from localStorage
+    dataSyncService.updateUserActions([]);
+  };
+
+  // Add manual sync function
+  const performManualSync = () => {
+    return dataSyncService.performManualSync();
+  };
+
+  // Get sync status
+  const getSyncStatus = () => {
+    return dataSyncService.getSyncStatus();
   };
 
   return (
-    <UserLogContext.Provider value={{ userActions, logAction, exportLog, exportLogAsJson, clearLog }}>
+    <UserLogContext.Provider value={{ 
+      userActions, 
+      logAction, 
+      exportLog, 
+      exportLogAsJson, 
+      clearLog,
+      performManualSync,
+      getSyncStatus
+    }}>
       {children}
     </UserLogContext.Provider>
   );

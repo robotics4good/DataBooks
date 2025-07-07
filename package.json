@@ -21,6 +21,7 @@
     "express": "^5.1.0",
     "firebase": "^11.8.1",
     "firebase-admin": "^13.4.0",
+    "node-fetch": "^2.7.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.5.3",
@@ -33,7 +34,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "server": "node server.js"
+    "test-esp": "node test-esp.js",
+    "test-esp-single": "node test-esp.js --single",
+    "test-esp-fast": "node test-esp.js --interval=500"
   },
   "eslintConfig": {
     "extends": [

@@ -4,6 +4,18 @@ import styles from './PlotComponent.module.css';
 import { playerNames } from './plotConfigs';
 import { isYAllowed, isXAllowed } from './plotUtils';
 
+// Helper: check if a variable has any valid pairings
+function hasValidPair(allowedMatrix, varName, isX, variables) {
+  if (!allowedMatrix || !variables) return true;
+  if (isX) {
+    // For X, check if there is any Y (not itself) where allowedMatrix[X][Y] is true
+    return variables.some(y => y !== varName && allowedMatrix[varName] && allowedMatrix[varName][y]);
+  } else {
+    // For Y, check if there is any X (not itself) where allowedMatrix[X][varName] is true
+    return variables.some(x => x !== varName && allowedMatrix[x] && allowedMatrix[x][varName]);
+  }
+}
+
 const PlotControls = ({
   plotType,
   variables,
@@ -18,6 +30,8 @@ const PlotControls = ({
   onHistogramXVariableToggle,
   onPieVariableSelect,
   onPersonFilterToggle,
+  onSelectAllDevices,
+  onDeselectAllDevices,
 }) => {
   return (
     <div className={styles.controlsContainer}>
@@ -44,39 +58,47 @@ const PlotControls = ({
             <div className={styles.variableOptionsContainer}>
               <div className={styles.variableColumn}>
                 <div className={styles.variableColumnLabel}>X:</div>
-                {variables && variables.map(v => (
-                  <label 
-                    key={v} 
-                    className={`${styles.variableLabel} ${yVars.length > 0 && !isXAllowed(allowedMatrix, yVars[0], v) ? styles.disabled : ''}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={xVars.includes(v)}
-                      disabled={yVars.length > 0 && !isXAllowed(allowedMatrix, yVars[0], v)}
-                      onChange={() => onXVariableToggle(v)}
-                      className={styles.variableCheckbox}
-                    />
-                    {v}
-                  </label>
-                ))}
+                {variables && variables.map(v => {
+                  const noValidY = !hasValidPair(allowedMatrix, v, true, variables);
+                  const disabled = (yVars.length > 0 && !isXAllowed(allowedMatrix, yVars[0], v)) || noValidY;
+                  return (
+                    <label 
+                      key={v} 
+                      className={`${styles.variableLabel} ${(disabled) ? styles.disabled : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={xVars.includes(v)}
+                        disabled={disabled}
+                        onChange={() => onXVariableToggle(v)}
+                        className={styles.variableCheckbox}
+                      />
+                      {v}
+                    </label>
+                  );
+                })}
               </div>
               <div className={styles.variableColumn}>
                 <div className={styles.variableColumnLabel}>Y:</div>
-                {variables && variables.map(v => (
-                  <label 
-                    key={v} 
-                    className={`${styles.variableLabel} ${xVars.length > 0 && !isYAllowed(allowedMatrix, xVars[0], v) ? styles.disabled : ''}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={yVars.includes(v)}
-                      disabled={xVars.length > 0 && !isYAllowed(allowedMatrix, xVars[0], v)}
-                      onChange={() => onYVariableToggle(v)}
-                      className={styles.variableCheckbox}
-                    />
-                    {v}
-                  </label>
-                ))}
+                {variables && variables.map(v => {
+                  const noValidX = !hasValidPair(allowedMatrix, v, false, variables);
+                  const disabled = (xVars.length > 0 && !isYAllowed(allowedMatrix, xVars[0], v)) || noValidX;
+                  return (
+                    <label 
+                      key={v} 
+                      className={`${styles.variableLabel} ${(disabled) ? styles.disabled : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={yVars.includes(v)}
+                        disabled={disabled}
+                        onChange={() => onYVariableToggle(v)}
+                        className={styles.variableCheckbox}
+                      />
+                      {v}
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </>
@@ -130,7 +152,11 @@ const PlotControls = ({
 
         {/* Device filter (always at the bottom of options) */}
         <div className={styles.deviceFilterContainer}>
-          <div className={styles.deviceFilterLabel}>Device Filter:</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <div className={styles.deviceFilterLabel}>Device Filter:</div>
+            <button type="button" onClick={onSelectAllDevices} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Select All</button>
+            <button type="button" onClick={onDeselectAllDevices} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Deselect All</button>
+          </div>
           <div className={styles.deviceFilterOptions}>
             {playerNames.map(name => (
               <label key={name} className={styles.deviceFilterOption}>

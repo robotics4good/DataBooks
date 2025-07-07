@@ -1,5 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
-import OutbreakSquad from "./games/OutbreakSquad";
+import AlienInvasion from "./games/AlienInvasion";
 import WhisperWeb from "./games/WhisperWeb";
 import LogisticsLeague from "./games/LogisticsLeague";
 import PollinationParty from "./games/PollinationParty";
@@ -64,18 +64,18 @@ const QuestionBox = ({ question, index, logAction }) => {
     );
 };
 
-const RightPanelContent = ({ selectedGame, theme }) => {
+const RightPanelContent = ({ selectedGame, theme, sessionId = "1234567890" }) => {
   switch (selectedGame) {
-    case 'outbreak-squad':
-      return <OutbreakSquad theme={theme} />;
+    case 'alien-invasion':
+      return <AlienInvasion sessionId={sessionId} />;
     case 'whisper-web':
-      return <WhisperWeb />;
+      return <WhisperWeb sessionId={sessionId} />;
     case 'logistics-league':
-      return <LogisticsLeague />;
+      return <LogisticsLeague sessionId={sessionId} />;
     case 'pollination-party':
-      return <PollinationParty />;
+      return <PollinationParty sessionId={sessionId} />;
     case 'rush-hour-rebels':
-      return <RushHourRebels />;
+      return <RushHourRebels sessionId={sessionId} />;
     default:
       return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '1.2rem' }}>
         Select a game to begin
@@ -195,36 +195,75 @@ const DualScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
           position: 'relative',
         }}
       >
-        <div className="tab-header">
+        <div className="tab-header" style={{
+          display: 'flex',
+          background: 'var(--cream-panel)',
+          borderBottom: 'none',
+          height: 48,
+          alignItems: 'flex-end',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+        }}>
           <button
             className="tab-btn"
             onClick={() => handleTabClick('journal')}
             style={{
               flex: 1,
-              padding: "1rem",
-              background: activeTab === 'journal' ? "var(--accent-green)" : "var(--cream-panel)",
-              color: "var(--text-dark)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "1.1rem"
+              padding: '1rem',
+              background: 'var(--cream-panel)',
+              color: 'var(--text-dark)',
+              border: 'none',
+              borderRadius: 0,
+              fontSize: '1.1rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              outline: 'none',
+              position: 'relative',
+              transition: 'background 0.2s, color 0.2s',
             }}
           >
-            Journal
+            {activeTab === 'journal' ? (
+              <span style={{
+                display: 'inline-block',
+                background: 'rgba(80, 200, 120, 0.15)',
+                borderRadius: 999,
+                padding: '0.7em 1.2em 0.5em 1.2em',
+                fontWeight: 800,
+                color: 'var(--accent-green)',
+                boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
+                marginTop: '0.3em',
+              }}>Journal</span>
+            ) : 'Journal'}
           </button>
           <button
             className="tab-btn"
             onClick={() => handleTabClick('settings')}
             style={{
               flex: 1,
-              padding: "1rem",
-              background: activeTab === 'settings' ? "var(--accent-green)" : "var(--cream-panel)",
-              color: "var(--text-dark)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "1.1rem"
+              padding: '1rem',
+              background: 'var(--cream-panel)',
+              color: 'var(--text-dark)',
+              border: 'none',
+              borderRadius: 0,
+              fontSize: '1.1rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              outline: 'none',
+              position: 'relative',
+              transition: 'background 0.2s, color 0.2s',
             }}
           >
-            Settings
+            {activeTab === 'settings' ? (
+              <span style={{
+                display: 'inline-block',
+                background: 'rgba(80, 200, 120, 0.15)',
+                borderRadius: 999,
+                padding: '0.7em 1.2em 0.5em 1.2em',
+                fontWeight: 800,
+                color: 'var(--accent-green)',
+                boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
+                marginTop: '0.3em',
+              }}>Settings</span>
+            ) : 'Settings'}
           </button>
         </div>
         <div className="tab-content" style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>

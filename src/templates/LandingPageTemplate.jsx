@@ -4,7 +4,7 @@ const LandingPageTemplate = ({ gameRoutes, onNavigate, className }) => {
       <h1 style={{ fontSize: "4rem", marginBottom: "2rem" }}>DataOrganisms</h1>
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {Object.entries(gameRoutes).map(([game, route]) => {
-          const isEnabled = game === "Outbreak Squad";
+          const isEnabled = game === "Alien Invasion";
           return (
             <button
               key={game}
@@ -23,6 +23,22 @@ const LandingPageTemplate = ({ gameRoutes, onNavigate, className }) => {
             </button>
           );
         })}
+        
+        {/* Control Panel Button */}
+        <button
+          onClick={() => onNavigate("/control-panel")}
+          className="dark-red"
+          style={{
+            fontSize: "1.5rem",
+            padding: "0.8rem 1.5rem",
+            cursor: "pointer",
+            borderRadius: "8px",
+            border: "none",
+            marginTop: "1rem"
+          }}
+        >
+          Control Panel
+        </button>
       </div>
     </div>
   );

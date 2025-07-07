@@ -20,6 +20,8 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
     handleHistogramXVariableToggle,
     handlePieVariableSelect,
     handlePersonFilterToggle,
+    onSelectAllDevices,
+    onDeselectAllDevices,
   } = usePlotState(plotLabel, logAction);
 
   // Filter data for the selected variables and person filter
@@ -51,6 +53,8 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
         onHistogramXVariableToggle={handleHistogramXVariableToggle}
         onPieVariableSelect={handlePieVariableSelect}
         onPersonFilterToggle={handlePersonFilterToggle}
+        onSelectAllDevices={onSelectAllDevices}
+        onDeselectAllDevices={onDeselectAllDevices}
       />
     </div>
   );

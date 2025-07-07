@@ -28,4 +28,7 @@ export { default as HistogramPlot } from './HistogramPlot';
 export { default as PiePlot } from './PiePlot';
 export { default as AreaPlot } from './AreaPlot';
 export { default as HeatmapPlot } from './HeatmapPlot';
-export { default as NetworkPlot } from './NetworkPlot'; 
+export { default as NetworkPlot } from './NetworkPlot';
+
+// ESP Data specific components
+export { default as ESPDataPlot } from './ESPDataPlot'; 
