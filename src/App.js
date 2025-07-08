@@ -17,9 +17,7 @@ const GAME_CONFIG = {
     { name: "Rush Hour Rebels", key: "rush-hour-rebels", enabled: false }
   ],
   playerNames: [
-    "Red Fox", "Blue Whale", "Green Turtle", "Purple Butterfly",
-    "Orange Tiger", "Yellow Lion", "Pink Dolphin", "Brown Bear",
-    "Black Panther", "White Eagle", "Gray Wolf", "Golden Eagle"
+    "Atlas", "Blaze", "Comet", "Echo", "Falcon", "Gem", "Harbor", "Indigo", "Jade", "Knight", "Luna", "Maverick", "Nova", "Orion", "Phoenix", "Quasar", "Rune", "Stellar", "Vega"
   ]
 };
 

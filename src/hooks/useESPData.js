@@ -1,7 +1,7 @@
 // useESPData.js - Custom hook for fetching and transforming ESP data from Firebase
 import { useState, useEffect } from 'react';
 import { db, ref, get } from '../firebase';
-import { formatSanDiegoTimeOnly, formatSanDiegoTime } from '../utils/timeUtils';
+import { formatSanDiegoTimeOnly, formatSanDiegoTime, timeService } from '../utils/timeUtils';
 import dataSyncService from '../services/dataSyncService';
 
 /**
@@ -40,7 +40,7 @@ export function useESPData(enableRealTime = false) {
         const summary = {
           totalPackets: transformedData.length,
           uniqueStudents: [...new Set(transformedData.map(item => item.id).filter(Boolean))].length,
-          lastUpdate: new Date().toISOString()
+          lastUpdate: timeService.getCurrentTime().toISOString()
         };
         dataSyncService.updateESPDataSummary(summary);
       } else {
@@ -49,7 +49,7 @@ export function useESPData(enableRealTime = false) {
         dataSyncService.updateESPDataSummary({
           totalPackets: 0,
           uniqueStudents: 0,
-          lastUpdate: new Date().toISOString()
+          lastUpdate: timeService.getCurrentTime().toISOString()
         });
       }
     } catch (err) {
@@ -189,6 +189,14 @@ export function useESPData(enableRealTime = false) {
     return [...new Set(espData.map(item => item.id).filter(Boolean))];
   };
 
+  // Calculate statistics
+  const totalPackets = espData.length;
+  const uniqueStudents = getDeviceIds().length;
+  const timeRange = espData.length > 0 ? {
+    start: espData[0]?.timestamp,
+    end: espData[espData.length - 1]?.timestamp
+  } : null;
+
   return {
     // Raw data
     espData,
@@ -198,17 +206,14 @@ export function useESPData(enableRealTime = false) {
     // Manual fetch function
     fetchESPData,
     
-    // Transformed data for plots
+    // Plot data functions
     getPlotData,
     getAvailableVariables,
     getDeviceIds,
     
-    // Summary statistics
-    totalPackets: espData.length,
-    uniqueStudents: getDeviceIds().length,
-    timeRange: espData.length > 0 ? {
-      start: espData[0]?.timestamp,
-      end: espData[espData.length - 1]?.timestamp
-    } : null
+    // Statistics
+    totalPackets,
+    uniqueStudents,
+    timeRange
   };
 } 

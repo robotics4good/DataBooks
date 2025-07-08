@@ -1,7 +1,7 @@
 // usePlotState.js - Custom hook for managing plot component state
 import { useState, useEffect } from 'react';
 import { playerNames, plotConfigs } from './plotConfigs';
-import { initializeVariableFilters, initializePersonFilter } from './plotUtils';
+import { initializeVariableFilters, initializeCadetFilter } from './plotUtils';
 
 /**
  * Custom hook for managing plot component state
@@ -16,7 +16,7 @@ export function usePlotState(plotLabel, logAction) {
   const [yVars, setYVars] = useState([]);
   
   // Filter states
-  const [personFilter, setPersonFilter] = useState(initializePersonFilter(playerNames));
+  const [cadetFilter, setCadetFilter] = useState(initializeCadetFilter(playerNames));
   const [xVarFilter, setXVarFilter] = useState({});
   const [yVarFilter, setYVarFilter] = useState({});
 
@@ -85,26 +85,26 @@ export function usePlotState(plotLabel, logAction) {
     }
   };
 
-  // Person filter toggle handler
-  const handlePersonFilterToggle = (name) => {
-    const newValue = !personFilter[name];
-    setPersonFilter(prev => ({ ...prev, [name]: newValue }));
+  // Cadet filter toggle handler
+  const handleCadetFilterToggle = (name) => {
+    const newValue = !cadetFilter[name];
+    setCadetFilter(prev => ({ ...prev, [name]: newValue }));
     if (logAction) {
-      logAction(`${plotLabel} person filter toggled: ${name} ${newValue ? 'selected' : 'deselected'}`);
+      logAction(`${plotLabel} cadet filter toggled: ${name} ${newValue ? 'selected' : 'deselected'}`);
     }
   };
 
-  // Device filter select all/deselect all handlers
-  const handleSelectAllDevices = () => {
-    setPersonFilter(playerNames.reduce((acc, name) => ({ ...acc, [name]: true }), {}));
+  // Cadet filter select all/deselect all handlers
+  const onSelectAllCadets = () => {
+    setCadetFilter(playerNames.reduce((acc, name) => ({ ...acc, [name]: true }), {}));
     if (logAction) {
-      logAction(`${plotLabel} device filter: select all`);
+      logAction(`${plotLabel} cadet filter: select all`);
     }
   };
-  const handleDeselectAllDevices = () => {
-    setPersonFilter(playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
+  const onDeselectAllCadets = () => {
+    setCadetFilter(playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
     if (logAction) {
-      logAction(`${plotLabel} device filter: deselect all`);
+      logAction(`${plotLabel} cadet filter: deselect all`);
     }
   };
 
@@ -113,7 +113,7 @@ export function usePlotState(plotLabel, logAction) {
     plotType,
     xVars,
     yVars,
-    personFilter,
+    cadetFilter,
     xVarFilter,
     yVarFilter,
     
@@ -129,8 +129,8 @@ export function usePlotState(plotLabel, logAction) {
     handleYVariableToggle,
     handleHistogramXVariableToggle,
     handlePieVariableSelect,
-    handlePersonFilterToggle,
-    onSelectAllDevices: handleSelectAllDevices,
-    onDeselectAllDevices: handleDeselectAllDevices,
+    handleCadetFilterToggle,
+    onSelectAllCadets,
+    onDeselectAllCadets,
   };
 } 

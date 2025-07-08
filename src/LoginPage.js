@@ -22,9 +22,7 @@ const LoginPage = ({ gameConfig }) => {
 
   const handleStartGame = () => {
     if (selectedPlayer) {
-      // Store the selected player in localStorage for use throughout the app
       localStorage.setItem('selectedPlayer', selectedPlayer);
-      logAction(`Player logged in: ${selectedPlayer}`);
       navigate(`/games/${gameKey}`);
     }
   };

@@ -14,10 +14,6 @@ const LandingPage = ({ gameConfig }) => {
   }, {});
 
   const handleGameSelect = (route) => {
-    const gameName = Object.keys(gameRoutes).find(key => gameRoutes[key] === route);
-    if (gameName) {
-      logAction(`Selected game: ${gameName}`);
-    }
     navigate(route);
   };
 

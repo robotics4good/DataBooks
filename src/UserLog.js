@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, ref, push } from "./firebase";
 import dataSyncService from "./services/dataSyncService";
+import { timeService } from './utils/timeUtils';
 
 const UserLogContext = createContext();
 
@@ -14,6 +15,7 @@ export const useUserLog = () => {
 
 export const UserLogProvider = ({ children }) => {
   const [userActions, setUserActions] = useState([]);
+  const [loggingEnabled, setLoggingEnabled] = useState(false);
 
   // Get the selected player from localStorage, fallback to 'S1' if not set
   const userId = localStorage.getItem('selectedPlayer') || 'S1';
@@ -44,25 +46,20 @@ export const UserLogProvider = ({ children }) => {
 
   // Make logAction async to await the NIST time
   const logAction = async (type, details) => {
-    const timestamp = new Date().toISOString();
+    if (!loggingEnabled) return;
+    const timestamp = timeService.getCurrentTime().toISOString();
     const cleanDetails = details ?? "";
-    
     const action = {
       id: userId,
       timestamp,
       type,
       details: cleanDetails
     };
-
-    // Update local state
     setUserActions(prev => {
       const newActions = [...prev, action];
-      // Store in localStorage
       dataSyncService.updateUserActions(newActions);
       return newActions;
     });
-
-    // Only send to Firebase if streaming is enabled
     if (dataSyncService.getSyncStatus().isRunning) {
       const userActivityRef = ref(db, `userActivity`);
       push(userActivityRef, action);
@@ -72,37 +69,7 @@ export const UserLogProvider = ({ children }) => {
     }
   };
 
-  const exportLog = () => {
-    const csv = [
-      'id,timestamp,type,details',
-      ...userActions.map(a => `"${a.id}","${a.timestamp}","${a.type}","${a.details}"`)
-    ].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'user_actions.csv';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Export user actions as JSON file
-  const exportLogAsJson = () => {
-    const json = JSON.stringify(userActions, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'user_actions.json';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const clearLog = () => {
-    setUserActions([]);
-    // Clear from localStorage
-    dataSyncService.updateUserActions([]);
-  };
+  const startLogging = () => setLoggingEnabled(true);
 
   // Add manual sync function
   const performManualSync = () => {
@@ -118,11 +85,9 @@ export const UserLogProvider = ({ children }) => {
     <UserLogContext.Provider value={{ 
       userActions, 
       logAction, 
-      exportLog, 
-      exportLogAsJson, 
-      clearLog,
       performManualSync,
-      getSyncStatus
+      getSyncStatus,
+      startLogging
     }}>
       {children}
     </UserLogContext.Provider>

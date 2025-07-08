@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import SingleScreenLayout from "./SingleScreenLayout";
 import DualScreenLayout from "./GameLayout";
@@ -8,8 +8,13 @@ import { JournalProvider } from "./JournalContext";
 const GamePage = ({ gameConfig }) => {
   const { gameKey } = useParams();
   const navigate = useNavigate();
-  const { logAction } = useUserLog();
+  const { logAction, startLogging } = useUserLog();
   const [dualScreen, setDualScreen] = useState(false);
+
+  useEffect(() => {
+    // Enable logging as soon as the game page loads
+    startLogging();
+  }, [startLogging]);
 
   // Find the current game from config
   const currentGame = gameConfig.games.find(g => g.key === gameKey);
@@ -38,6 +43,7 @@ const GamePage = ({ gameConfig }) => {
           handleBackToGames={handleBackToGames}
           playerNames={gameConfig.playerNames}
           onToggleLayout={handleToggleLayout}
+          isDualScreen={true}
         />
       ) : (
         <SingleScreenLayout
@@ -45,6 +51,7 @@ const GamePage = ({ gameConfig }) => {
           handleBackToGames={handleBackToGames}
           playerNames={gameConfig.playerNames}
           onToggleLayout={handleToggleLayout}
+          isDualScreen={false}
         />
       )}
     </JournalProvider>

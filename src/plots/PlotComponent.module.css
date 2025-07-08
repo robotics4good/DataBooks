@@ -3,37 +3,42 @@
 .plotContainer {
   height: 100%;
   width: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: var(--cream-panel);
-  border: 2px solid var(--divider-green-light);
+  /* border: 2px solid var(--divider-green-light); */
   border-radius: 8px;
   min-width: 0;
-  min-height: 0;
+  overflow: hidden;
+  max-width: 100%;
+  flex: 1 1 auto;
 }
 
 .plotRenderer {
-  flex: 1 1 0%;
-  min-height: 120px;
-  max-height: 50%;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
+  max-width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .controlsContainer {
-  flex: 1 1 0%;
+  flex: 0 0 auto;
   min-height: 0;
   max-width: 600px;
   margin: 1.5rem auto 1.5rem auto;
-  height: 100%;
+  height: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   overflow-y: auto;
-  border: 1.5px solid var(--divider-green-light);
+  /* border: 1.5px solid var(--divider-green-light); */
   border-radius: 8px;
   background: var(--offwhite-bg);
   padding: 1.5rem 1rem 1.5rem 1rem;
@@ -71,11 +76,12 @@
   margin-bottom: 0.5rem;
   color: var(--text-dark);
   align-self: flex-start;
+  text-align: left;
 }
 
 .variableOptionsContainer {
   display: flex;
-  gap: 2rem;
+  gap: 3.5rem;
   justify-content: center;
   width: 100%;
 }
@@ -87,6 +93,7 @@
 .variableColumnLabel {
   font-weight: 500;
   margin-bottom: 0.3rem;
+  text-align: left;
 }
 
 .variableLabel {
@@ -95,6 +102,7 @@
   margin-bottom: 0.3rem;
   opacity: 1;
   transition: opacity 0.2s;
+  text-align: left;
 }
 
 .variableLabel.disabled {
@@ -131,12 +139,14 @@
   font-weight: bold;
   margin-bottom: 0.5rem;
   color: var(--text-dark);
+  text-align: left;
 }
 
 .deviceFilterOptions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.7rem;
+  justify-content: flex-start;
 }
 
 .deviceFilterOption {
@@ -145,6 +155,7 @@
   gap: 0.3rem;
   color: var(--text-dark);
   font-weight: 500;
+  text-align: left;
 }
 
 .deviceFilterCheckbox {

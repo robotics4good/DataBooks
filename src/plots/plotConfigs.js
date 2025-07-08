@@ -7,8 +7,7 @@ import PiePlot from './PiePlot';
 
 // Player names constant
 export const playerNames = [
-  "Red Fox", "Blue Whale", "Green Turtle", "Purple Butterfly", "Orange Tiger", "Yellow Lion", 
-  "Pink Dolphin", "Brown Bear", "Black Panther", "White Eagle", "Gray Wolf", "Golden Eagle"
+  "Atlas", "Blaze", "Comet", "Echo", "Falcon", "Gem", "Harbor", "Indigo", "Jade", "Knight", "Luna", "Maverick", "Nova", "Orion", "Phoenix", "Quasar", "Rune", "Stellar", "Vega"
 ];
 
 // Modular config for each plot type
@@ -20,63 +19,63 @@ export const plotConfigs = {
         "Time": false,
         "Tasks Completed": true,
         "Meetings Held": true,
-        "Table Infections": true,
-        "Student Infections": true
+        "Infected Sectors": true,
+        "Infected Cadets": true
       },
       "Tasks Completed": {
         "Time": true,
         "Tasks Completed": false,
         "Meetings Held": false,
-        "Table Infections": true,
-        "Student Infections": true
+        "Infected Sectors": true,
+        "Infected Cadets": true
       },
       "Meetings Held": {
         "Time": true,
         "Tasks Completed": true,
         "Meetings Held": false,
-        "Table Infections": true,
-        "Student Infections": true
+        "Infected Sectors": true,
+        "Infected Cadets": true
       },
-      "Table Infections": {
+      "Infected Sectors": {
         "Time": false,
         "Tasks Completed": false,
         "Meetings Held": false,
-        "Table Infections": false,
-        "Student Infections": false
+        "Infected Sectors": false,
+        "Infected Cadets": false
       },
-      "Student Infections": {
+      "Infected Cadets": {
         "Time": false,
         "Tasks Completed": false,
         "Meetings Held": false,
-        "Table Infections": false,
-        "Student Infections": false
+        "Infected Sectors": false,
+        "Infected Cadets": false
       }
     },
-    variables: ["Time", "Tasks Completed", "Meetings Held", "Table Infections", "Student Infections"],
+    variables: ["Time", "Tasks Completed", "Meetings Held", "Infected Sectors", "Infected Cadets"],
     component: LinePlot,
   },
   scatter: {
     label: 'Scatter Plot',
     allowedMatrix: {
-      "Time":              { "Time": false, "Tasks Completed": true,  "Meetings Held": true,  "Table Infections": true,  "Student Infections": true },
-      "Tasks Completed":   { "Time": true,  "Tasks Completed": false, "Meetings Held": true,  "Table Infections": true,  "Student Infections": true },
-      "Meetings Held":     { "Time": true,  "Tasks Completed": true,  "Meetings Held": false, "Table Infections": true,  "Student Infections": true },
-      "Table Infections":  { "Time": true,  "Tasks Completed": true,  "Meetings Held": true,  "Table Infections": false, "Student Infections": true },
-      "Student Infections":{ "Time": true,  "Tasks Completed": true,  "Meetings Held": true,  "Table Infections": true,  "Student Infections": false },
+      "Time":              { "Time": false, "Tasks Completed": true,  "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": true },
+      "Tasks Completed":   { "Time": true,  "Tasks Completed": false, "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": true },
+      "Meetings Held":     { "Time": true,  "Tasks Completed": true,  "Meetings Held": false, "Infected Sectors": true,  "Infected Cadets": true },
+      "Infected Sectors":  { "Time": true,  "Tasks Completed": true,  "Meetings Held": true,  "Infected Sectors": false, "Infected Cadets": true },
+      "Infected Cadets":   { "Time": true,  "Tasks Completed": true,  "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": false },
     },
-    variables: ["Time", "Tasks Completed", "Meetings Held", "Table Infections", "Student Infections"],
+    variables: ["Time", "Tasks Completed", "Meetings Held", "Infected Sectors", "Infected Cadets"],
     component: ScatterPlot,
   },
   bar: {
     label: 'Bar Plot',
     allowedMatrix: {
-      "Time":              { "Time": false, "Tasks Completed": true,  "Meetings Held": true,  "Table Infections": true,  "Student Infections": true },
-      "Tasks Completed":   { "Time": false, "Tasks Completed": false, "Meetings Held": true,  "Table Infections": true,  "Student Infections": true },
-      "Meetings Held":     { "Time": false, "Tasks Completed": true,  "Meetings Held": false, "Table Infections": true,  "Student Infections": true },
-      "Table Infections":  { "Time": false, "Tasks Completed": true,  "Meetings Held": true,  "Table Infections": false, "Student Infections": true },
-      "Student Infections":{ "Time": false, "Tasks Completed": true,  "Meetings Held": true,  "Table Infections": true,  "Student Infections": false },
+      "Time":              { "Time": false, "Tasks Completed": true,  "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": true },
+      "Tasks Completed":   { "Time": false, "Tasks Completed": false, "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": true },
+      "Meetings Held":     { "Time": false, "Tasks Completed": true,  "Meetings Held": false, "Infected Sectors": true,  "Infected Cadets": true },
+      "Infected Sectors":  { "Time": false, "Tasks Completed": true,  "Meetings Held": true,  "Infected Sectors": false, "Infected Cadets": true },
+      "Infected Cadets":   { "Time": false, "Tasks Completed": true,  "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": false },
     },
-    variables: ["Time", "Tasks Completed", "Meetings Held", "Table Infections", "Student Infections"],
+    variables: ["Time", "Tasks Completed", "Meetings Held", "Infected Sectors", "Infected Cadets"],
     component: BarPlot,
   },
   histogram: {
@@ -85,15 +84,15 @@ export const plotConfigs = {
       "Time":              { "Frequency": false },
       "Tasks Completed":   { "Frequency": false },
       "Meetings Held":     { "Frequency": false },
-      "Table Infections":  { "Frequency": true },
-      "Student Infections":{ "Frequency": true },
+      "Infected Sectors":  { "Frequency": true },
+      "Infected Cadets":   { "Frequency": true },
     },
-    variables: ["Table Infections", "Student Infections"],
+    variables: ["Infected Sectors", "Infected Cadets"],
     yVariable: "Frequency",
     component: HistogramPlot,
     notes: {
-      "Table Infections": "Adapt to Table Infection Status, each table is numbered on the x-axis",
-      "Student Infections": "Adapt to Student Infection Status, each student is numbered on the x-axis"
+      "Infected Sectors": "Adapt to Infected Sector Status, each sector is numbered on the x-axis",
+      "Infected Cadets": "Adapt to Infected Cadet Status, each cadet is numbered on the x-axis"
     }
   },
   pie: {

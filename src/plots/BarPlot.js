@@ -30,11 +30,16 @@ const BarPlot = ({ data = [] }) => {
       <div style={{ 
         height: "100%", 
         width: "100%",
+        minHeight: 320,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: "1rem",
-        color: "#666"
+        fontSize: "1.1rem",
+        color: "#666",
+        background: "#f8f3ea",
+        borderRadius: 8,
+        border: "1.5px solid #e0e0e0",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
       }}>
         No data to display currently
       </div>
