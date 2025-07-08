@@ -1,7 +1,7 @@
 // dataSyncService.js - Service for syncing journal and user action data to Firebase
 import { getCurrentSanDiegoTime } from '../utils/timeUtils';
-import { db } from '../firebase';
-import { ref, push, set } from 'firebase/database';
+import { db, ref, push, set } from '../firebase';
+import { timeService } from '../utils/timeUtils';
 
 class DataSyncService {
   constructor() {
@@ -18,14 +18,11 @@ class DataSyncService {
       console.log('Data sync already running');
       return;
     }
-
     this.isRunning = true;
     console.log('Starting data sync service (every minute)');
-
-    // Initial sync
+    // Initial sync (append)
     this.performSync();
-
-    // Set up interval for every minute
+    // Set up interval for every minute (append)
     this.syncInterval = setInterval(() => {
       this.performSync();
     }, 60000); // 60 seconds = 1 minute
@@ -59,7 +56,7 @@ class DataSyncService {
   }
 
   /**
-   * Perform a manual sync
+   * Perform a manual sync (append)
    */
   async performManualSync() {
     console.log('Performing manual data sync to Firebase');
@@ -99,32 +96,76 @@ class DataSyncService {
   }
 
   /**
-   * Perform the actual sync operation
+   * Perform the actual sync operation (append)
    */
   async performSync() {
     try {
       // Get current timestamp
-      const syncTimestamp = await getCurrentSanDiegoTime();
-      
+      const syncTimestamp = timeService.getCurrentTime();
       // Get all data to sync
-      const syncData = await this.gatherAllData(syncTimestamp);
-      
-      // Send to Firebase
-      const response = await this.sendToFirebase(syncData);
-      
+      const userActions = this.getUserActions();
+      const journalData = this.getJournalData();
+      const sessionId = this.getSessionId();
+      // Sync user actions (hybrid: latest + append)
+      await this.syncUserActionsToFirebase(sessionId, userActions, syncTimestamp);
+      // Sync journal entries (hybrid: latest + append)
+      await this.syncJournalEntriesToFirebase(sessionId, journalData, syncTimestamp);
       // Update last sync time
       this.lastSyncTime = syncTimestamp;
-      
       console.log('Data sync to Firebase completed successfully:', {
         timestamp: syncTimestamp,
-        dataSize: JSON.stringify(syncData).length,
-        firebaseKey: response
+        userActionsCount: userActions.length,
+        journalEntriesCount: Object.keys(journalData.answers || {}).length,
+        sessionId
       });
-
-      return { success: true, timestamp: syncTimestamp, firebaseKey: response };
+      return { success: true, timestamp: syncTimestamp, sessionId };
     } catch (error) {
       console.error('Data sync to Firebase failed:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Sync user actions to Firebase (hybrid: overwrite latest and append to history)
+   */
+  async syncUserActionsToFirebase(sessionId, userActions, syncTimestamp) {
+    try {
+      const userActionsLatestRef = ref(db, `userActions/${sessionId}/latest`);
+      await set(userActionsLatestRef, {
+        actions: userActions,
+        lastUpdated: syncTimestamp
+      });
+      // Append to history
+      const userActionsHistoryRef = ref(db, `userActions/${sessionId}/history`);
+      await push(userActionsHistoryRef, {
+        actions: userActions,
+        timestamp: syncTimestamp
+      });
+    } catch (error) {
+      console.error('Failed to sync user actions to Firebase:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync journal entries to Firebase (hybrid: overwrite latest and append to history)
+   */
+  async syncJournalEntriesToFirebase(sessionId, journalData, syncTimestamp) {
+    try {
+      const journalEntriesLatestRef = ref(db, `journalEntries/${sessionId}/latest`);
+      await set(journalEntriesLatestRef, {
+        answers: journalData.answers,
+        lastUpdated: syncTimestamp
+      });
+      // Append to history
+      const journalEntriesHistoryRef = ref(db, `journalEntries/${sessionId}/history`);
+      await push(journalEntriesHistoryRef, {
+        answers: journalData.answers,
+        timestamp: syncTimestamp
+      });
+    } catch (error) {
+      console.error('Failed to sync journal entries to Firebase:', error);
+      throw error;
     }
   }
 
@@ -188,15 +229,15 @@ class DataSyncService {
       if (stored) {
         return {
           answers: JSON.parse(stored),
-          timestamp: new Date().toISOString()
+          timestamp: timeService.getCurrentTime().toISOString()
         };
       }
       
       // Fallback: return empty object
-      return { answers: {}, timestamp: new Date().toISOString() };
+      return { answers: {}, timestamp: timeService.getCurrentTime().toISOString() };
     } catch (error) {
       console.warn('Failed to get journal data:', error);
-      return { answers: {}, timestamp: new Date().toISOString() };
+      return { answers: {}, timestamp: timeService.getCurrentTime().toISOString() };
     }
   }
 
@@ -215,14 +256,14 @@ class DataSyncService {
       return {
         totalPackets: 0,
         uniqueStudents: 0,
-        lastUpdate: new Date().toISOString()
+        lastUpdate: timeService.getCurrentTime().toISOString()
       };
     } catch (error) {
       console.warn('Failed to get ESP data summary:', error);
       return {
         totalPackets: 0,
         uniqueStudents: 0,
-        lastUpdate: new Date().toISOString()
+        lastUpdate: timeService.getCurrentTime().toISOString()
       };
     }
   }
@@ -242,7 +283,7 @@ class DataSyncService {
         screenResolution: `${window.screen.width}x${window.screen.height}`,
         windowSize: `${window.innerWidth}x${window.innerHeight}`
       },
-      timestamp: new Date().toISOString()
+      timestamp: timeService.getCurrentTime().toISOString()
     };
   }
 
@@ -292,9 +333,9 @@ class DataSyncService {
       await set(newSyncRef, {
         ...data,
         firebaseKey: newSyncRef.key,
-        uploadedAt: new Date().toISOString()
+        uploadedAt: timeService.getCurrentTime().toISOString()
       });
-
+      
       return newSyncRef.key;
     } catch (error) {
       console.error('Failed to send data to Firebase:', error);
@@ -309,7 +350,7 @@ class DataSyncService {
     try {
       localStorage.setItem('espDataSummary', JSON.stringify({
         ...summary,
-        lastUpdate: new Date().toISOString()
+        lastUpdate: timeService.getCurrentTime().toISOString()
       }));
     } catch (error) {
       console.warn('Failed to update ESP data summary:', error);

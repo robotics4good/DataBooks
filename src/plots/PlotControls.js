@@ -33,9 +33,15 @@ const PlotControls = ({
   onSelectAllDevices,
   onDeselectAllDevices,
 }) => {
+  // Ensure personFilter is always defined
+  const safePersonFilter = personFilter || playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {});
+
   return (
     <div className={styles.controlsContainer}>
       <div className={styles.optionsArea}>
+        <div style={{ fontWeight: 500, fontSize: '1rem', marginBottom: '0.08rem', alignSelf: 'center', color: 'var(--text-dark)', textAlign: 'center', letterSpacing: '0.01em' }}>
+          Plot Options
+        </div>
         {/* Plot type selector */}
         <div className={styles.plotTypeSelector}>
           <select
@@ -134,7 +140,7 @@ const PlotControls = ({
           <>
             <div className={styles.variableOptionsLabel}>Variable Options:</div>
             <div className={styles.variableOptionsContainer}>
-              {['Table Infections', 'Student Infections'].map(v => (
+              {['Infected Sectors', 'Infected Cadets'].map(v => (
                 <label key={v} className={styles.variableLabel}>
                   <input
                     type="radio"
@@ -153,7 +159,7 @@ const PlotControls = ({
         {/* Device filter (always at the bottom of options) */}
         <div className={styles.deviceFilterContainer}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <div className={styles.deviceFilterLabel}>Device Filter:</div>
+            <div className={styles.deviceFilterLabel}>Cadet Filter:</div>
             <button type="button" onClick={onSelectAllDevices} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Select All</button>
             <button type="button" onClick={onDeselectAllDevices} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Deselect All</button>
           </div>
@@ -162,7 +168,7 @@ const PlotControls = ({
               <label key={name} className={styles.deviceFilterOption}>
                 <input
                   type="checkbox"
-                  checked={personFilter[name]}
+                  checked={!!safePersonFilter[name]}
                   onChange={() => onPersonFilterToggle(name)}
                   className={styles.deviceFilterCheckbox}
                 />

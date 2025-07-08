@@ -1,48 +1,38 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import dataSyncService from './services/dataSyncService';
+import React, { createContext, useContext, useState } from 'react';
 
 const JournalContext = createContext();
 
-export function JournalProvider({ children }) {
-  // Store answers as an object: { [questionIndex]: answer }
+export const useJournal = () => {
+  const context = useContext(JournalContext);
+  if (!context) {
+    throw new Error('useJournal must be used within a JournalProvider');
+  }
+  return context;
+};
+
+export const JournalProvider = ({ children }) => {
   const [journalAnswers, setJournalAnswers] = useState({});
 
-  // Load journal answers from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('journalAnswers');
-      if (stored) {
-        const answers = JSON.parse(stored);
-        setJournalAnswers(answers);
-      }
-    } catch (error) {
-      console.warn('Failed to load journal answers from localStorage:', error);
-    }
-  }, []);
-
-  // Update a single answer
   const setJournalAnswer = (index, answer) => {
-    setJournalAnswers(prev => {
-      const newAnswers = { ...prev, [index]: answer };
-      // Store in localStorage
-      dataSyncService.updateJournalData(newAnswers);
-      return newAnswers;
-    });
+    setJournalAnswers(prev => ({
+      ...prev,
+      [index]: answer
+    }));
   };
 
-  // Optionally, clear all answers
-  const clearJournalAnswers = () => {
+  const clearJournal = () => {
     setJournalAnswers({});
-    dataSyncService.updateJournalData({});
+  };
+
+  const value = {
+    journalAnswers,
+    setJournalAnswer,
+    clearJournal
   };
 
   return (
-    <JournalContext.Provider value={{ journalAnswers, setJournalAnswer, clearJournalAnswers }}>
+    <JournalContext.Provider value={value}>
       {children}
     </JournalContext.Provider>
   );
-}
-
-export function useJournal() {
-  return useContext(JournalContext);
-} 
+}; 

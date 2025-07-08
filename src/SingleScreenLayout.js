@@ -7,56 +7,18 @@ import RushHourRebels from "./games/RushHourRebels";
 import { useUserLog } from "./UserLog";
 import PlotComponent from "./plots/PlotComponent";
 import { useJournal } from "./JournalContext";
+import { JournalQuestions } from "./components/JournalQuestions";
+import TopBar from './components/TopBar';
 
 const MIN_WIDTH_PERCENT = 30;
 const MAX_WIDTH_PERCENT = 50;
 
-const AutoResizingTextarea = ({ value, onChange, onBlur, ...props }) => {
-  const textareaRef = useRef(null);
 
-  useLayoutEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'inherit';
-      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 50)}px`;
-    }
-  }, [value]);
 
-  return <textarea ref={textareaRef} value={value} onChange={onChange} onBlur={onBlur} {...props} />;
-};
-
-const QuestionBox = ({ question, index, logAction }) => {
-    const { journalAnswers, setJournalAnswer } = useJournal();
-    const answer = journalAnswers[index] || "";
-    const handleAnswerChange = (e) => {
-        setJournalAnswer(index, e.target.value);
-    };
-
-    const handleAnswerBlur = (e) => {
-        const value = e.target.value;
-        const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
-        logAction(`journal_entry`, `Question ${index + 1} word_count: ${wordCount}`);
-    };
-
-    return (
-        <div style={styles.questionBox}>
-            <label style={styles.questionLabel}>
-                {question}
-            </label>
-            <AutoResizingTextarea
-                placeholder="Your answer..."
-                value={answer}
-                onChange={handleAnswerChange}
-                onBlur={handleAnswerBlur}
-                style={styles.textarea}
-            />
-        </div>
-    );
-};
-
-const GameContent = ({ selectedGame, theme }) => {
+const GameContent = ({ selectedGame }) => {
   switch (selectedGame) {
     case 'alien-invasion':
-      return <AlienInvasion theme={theme} />;
+      return <AlienInvasion />;
     case 'whisper-web':
       return <WhisperWeb />;
     case 'logistics-league':
@@ -78,7 +40,8 @@ const styles = {
     boxSizing: "border-box",
     display: "flex",
     flexDirection: "column",
-    background: "var(--offwhite-bg)"
+    background: "var(--offwhite-bg)",
+    marginTop: '56px',
   },
   tabHeader: {
     display: "flex",
@@ -101,7 +64,7 @@ const styles = {
   plotContainer: {
     flex: 1,
     minWidth: 0,
-    minHeight: 0,
+    minHeight: '340px',
     padding: '20px',
     paddingBottom: 0,
     marginBottom: '2rem',
@@ -146,11 +109,22 @@ const styles = {
   }
 };
 
-const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) => {
-  const { logAction, exportLog, clearLog, exportLogAsJson } = useUserLog();
-  const [activeTab, setActiveTab] = useState('plot');
-  const [notification, setNotification] = useState({ message: '', type: '' });
-  const [theme, setTheme] = useState('unity');
+// Helper to get display name for header
+const getGameDisplayName = (selectedGame) => {
+  if (!selectedGame) return "";
+  if (typeof selectedGame === "string") {
+    return selectedGame.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  if (selectedGame.name) return selectedGame.name;
+  if (selectedGame.key) {
+    return selectedGame.key.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  return String(selectedGame);
+};
+
+const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onToggleLayout, isDualScreen }) => {
+  const { logAction } = useUserLog();
+  const [activeTab, setActiveTab] = useState('dataplots');
   
   // Plot state tracking
   const [plot1Type, setPlot1Type] = useState('line');
@@ -180,29 +154,25 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
   const xVariables = ["Time", "Distance", "Score", "Attempts"];
   const yVariables = ["Infections", "Vaccinations", "Population", "Efficiency"];
 
-  const questions = [
-    "What were your initial thoughts or feelings about the game when you first saw it?",
-    "Describe your strategy during the game. Did it change over time?",
-    "What was the most challenging part of the game for you?",
-    "Were there any moments that you found particularly surprising or interesting?",
-    "If you could change one thing about the game, what would it be and why?",
-    "How did this game make you think about the real-world topic it represents?",
-    "If you played before, how did this round compare to your previous experiences?",
-    "If you were a researcher, what data would you collect from this game?",
-    "What part of the game was most engaging?",
-    "What part of the game was most confusing?",
-    "How many times did you try the game?",
-    "What was your final score?",
-    "How do you think the creators of this game want you to feel?",
-    "What is the key takeaway from the game?",
-    "If you got infected, what time did it happen?",
-    "How do you think the vaccine affected the spread this time?",
-    "Is there anything else you would like to share about your experience?"
-  ];
+
 
   // Person filter state (unique per plot, decorative for now)
-  const [plot1PersonFilter, setPlot1PersonFilter] = useState(playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
-  const [plot2PersonFilter, setPlot2PersonFilter] = useState(playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
+  const [plot1PersonFilter, setPlot1PersonFilter] = useState(() => playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
+  const [plot2PersonFilter, setPlot2PersonFilter] = useState(() => playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
+
+  // Ensure filters are always in sync with playerNames
+  React.useEffect(() => {
+    setPlot1PersonFilter(prev => {
+      const updated = { ...playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}) };
+      for (const name in prev) if (name in updated) updated[name] = prev[name];
+      return updated;
+    });
+    setPlot2PersonFilter(prev => {
+      const updated = { ...playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}) };
+      for (const name in prev) if (name in updated) updated[name] = prev[name];
+      return updated;
+    });
+  }, [playerNames]);
 
   const handleTabClick = (tabName) => {
     if (activeTab === tabName) {
@@ -213,7 +183,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
   };
 
   const handlePlotTypeChange = (plotNumber, newType) => {
-    logAction(`Plot ${plotNumber} type changed to: ${newType}`);
+    logAction(`Plot ${plotNumber} type changed to ${newType}`);
     if (plotNumber === 1) {
       setPlot1Type(newType);
     } else {
@@ -251,135 +221,117 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
     }
   };
 
-  const showNotification = (message, type) => {
-    setNotification({ message, type });
-    setTimeout(() => {
-      setNotification({ message: '', type: '' });
-    }, 3000);
-  };
-
-  const handleExport = () => {
-    logAction('Clicked Export button');
-    setTimeout(() => {
-      exportLog();
-      showNotification('User actions exported successfully!', 'success');
-    }, 100);
-  };
-
-  const handleErase = () => {
-    logAction('Clicked Erase All User Data button');
-    clearLog();
-    showNotification('All user data has been erased.', 'error');
-  };
-
   return (
-    <div className={`${theme}-mode`} style={styles.main}>
-      {notification.message && (
-        <div className={`notification ${notification.type}`}>{notification.message}</div>
-      )}
-      {/* Tab Header */}
-      <div style={{ ...styles.tabHeader, borderBottom: 'none' }}>
-        <button
-          onClick={() => setActiveTab('plot')}
-          style={{
-            flex: 1,
-            padding: '1rem',
-            background: 'var(--cream-panel)',
-            color: 'var(--text-dark)',
-            border: 'none',
-            borderRadius: 0,
-            fontSize: '1.1rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            outline: 'none',
-            position: 'relative',
-            transition: 'background 0.2s, color 0.2s',
-          }}
-        >
-          {activeTab === 'plot' ? (
+    <div style={styles.main}>
+      <TopBar
+        gameName={getGameDisplayName(selectedGame)}
+        cadetName={typeof window !== 'undefined' ? localStorage.getItem('selectedPlayer') : ''}
+        onBack={handleBackToGames}
+        onToggleView={onToggleLayout}
+        toggleLabel={isDualScreen ? 'Go Single Screen' : 'Go Dual Screen'}
+      />
+      <div style={{
+        marginTop: 0,
+        display: "flex",
+        flexDirection: "column"
+      }}>
+        <div className="tab-header single-tab-header" style={{
+          display: 'flex',
+          justifyContent: 'space-evenly',
+          alignItems: 'center',
+          background: 'var(--offwhite-bg)',
+          borderBottom: 'none',
+          height: 48,
+          width: '100%',
+          margin: '18px 0 0 0',
+          marginBottom: '12px',
+          borderRadius: 0,
+          boxShadow: 'none',
+          position: 'relative',
+          zIndex: 1,
+        }}>
+          <button
+            className="tab-btn"
+            onClick={() => setActiveTab('dataplots')}
+            style={{
+              background: 'none',
+              color: 'var(--text-dark)',
+              border: 'none',
+              borderRadius: 0,
+              fontSize: '1.15rem',
+              fontWeight: activeTab === 'dataplots' ? 800 : 600,
+              cursor: 'pointer',
+              outline: 'none',
+              position: 'relative',
+              transition: 'color 0.2s',
+              boxShadow: 'none',
+              padding: 0,
+              minWidth: '120px',
+              width: '140px',
+              textAlign: 'center',
+              display: 'inline-block',
+            }}
+          >
             <span style={{
               display: 'inline-block',
-              background: 'rgba(80, 200, 120, 0.15)',
+              background: activeTab === 'dataplots' ? 'rgba(80, 200, 120, 0.13)' : 'none',
               borderRadius: 999,
-              padding: '0.7em 1.2em 0.5em 1.2em',
+              padding: '0.4em 1.5em',
               fontWeight: 800,
-              color: 'var(--accent-green)',
-              boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
-              marginTop: '0.3em',
-            }}>Plot</span>
-          ) : 'Plot'}
-        </button>
-        <button
-          onClick={() => setActiveTab('journal')}
-          style={{
-            flex: 1,
-            padding: '1rem',
-            background: 'var(--cream-panel)',
-            color: 'var(--text-dark)',
-            border: 'none',
-            borderRadius: 0,
-            fontSize: '1.1rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            outline: 'none',
-            position: 'relative',
-            transition: 'background 0.2s, color 0.2s',
-          }}
-        >
-          {activeTab === 'journal' ? (
+              color: activeTab === 'dataplots' ? 'var(--dark-green)' : 'inherit',
+              fontSize: '1.1em',
+              width: '100%',
+              transform: activeTab === 'dataplots' ? 'scale(1.08)' : 'scale(1)',
+              transition: 'transform 0.18s cubic-bezier(.4,1.3,.6,1)',
+            }}>
+              DataPlots
+            </span>
+          </button>
+          <button
+            className="tab-btn"
+            onClick={() => setActiveTab('journal')}
+            style={{
+              background: 'none',
+              color: 'var(--text-dark)',
+              border: 'none',
+              borderRadius: 0,
+              fontSize: '1.15rem',
+              fontWeight: activeTab === 'journal' ? 800 : 600,
+              cursor: 'pointer',
+              outline: 'none',
+              position: 'relative',
+              transition: 'color 0.2s',
+              boxShadow: 'none',
+              padding: 0,
+              minWidth: '120px',
+              width: '140px',
+              textAlign: 'center',
+              display: 'inline-block',
+            }}
+          >
             <span style={{
               display: 'inline-block',
-              background: 'rgba(80, 200, 120, 0.15)',
+              background: activeTab === 'journal' ? 'rgba(80, 200, 120, 0.13)' : 'none',
               borderRadius: 999,
-              padding: '0.7em 1.2em 0.5em 1.2em',
+              padding: '0.4em 1.5em',
               fontWeight: 800,
-              color: 'var(--accent-green)',
-              boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
-              marginTop: '0.3em',
-            }}>Journal</span>
-          ) : 'Journal'}
-        </button>
-        <button
-          onClick={() => setActiveTab('settings')}
-          style={{
-            flex: 1,
-            padding: '1rem',
-            background: 'var(--cream-panel)',
-            color: 'var(--text-dark)',
-            border: 'none',
-            borderRadius: 0,
-            fontSize: '1.1rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            outline: 'none',
-            position: 'relative',
-            transition: 'background 0.2s, color 0.2s',
-          }}
-        >
-          {activeTab === 'settings' ? (
-            <span style={{
-              display: 'inline-block',
-              background: 'rgba(80, 200, 120, 0.15)',
-              borderRadius: 999,
-              padding: '0.7em 1.2em 0.5em 1.2em',
-              fontWeight: 800,
-              color: 'var(--accent-green)',
-              boxShadow: '0 1px 4px rgba(80,200,120,0.08)',
-              marginTop: '0.3em',
-            }}>Settings</span>
-          ) : 'Settings'}
-        </button>
-      </div>
-      {/* Content Area */}
-      <div style={styles.contentArea}>
-        {activeTab === 'plot' && (
+              color: activeTab === 'journal' ? 'var(--dark-green)' : 'inherit',
+              fontSize: '1.1em',
+              width: '100%',
+              transform: activeTab === 'journal' ? 'scale(1.08)' : 'scale(1)',
+              transition: 'transform 0.18s cubic-bezier(.4,1.3,.6,1)',
+            }}>
+              Journal
+            </span>
+          </button>
+        </div>
+        {activeTab === 'dataplots' && (
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={styles.plotRow}>
               {/* Left Plot */}
               <div style={styles.plotContainer}>
                 <PlotComponent
-                  plotLabel="Plot 1"
-                  theme={theme}
+                  plotLabel="DataPlots 1"
                   data={[]}
                   logAction={logAction}
                 />
@@ -387,8 +339,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
               {/* Right Plot */}
               <div style={styles.plotContainer}>
                 <PlotComponent
-                  plotLabel="Plot 2"
-                  theme={theme}
+                  plotLabel="DataPlots 2"
                   data={[]}
                   logAction={logAction}
                 />
@@ -400,41 +351,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames }) =>
           <React.Fragment>
             <div style={{ height: "100%", padding: "20px", overflow: "auto" }}>
               <div style={styles.card}>
-                <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Reflection Journal</h3>
-                {questions.map((question, index) => (
-                  <QuestionBox
-                    key={index}
-                    question={question}
-                    index={index}
-                    logAction={logAction}
-                  />
-                ))}
-              </div>
-            </div>
-          </React.Fragment>
-        )}
-        {activeTab === 'settings' && (
-          <React.Fragment>
-            <div style={{ height: "100%", padding: "20px", overflow: "auto" }}>
-              <div style={styles.card}>
-                <h3 style={{ marginBottom: "20px", color: "var(--text-dark)" }}>Settings</h3>
-                <div style={{ marginBottom: "20px" }}>
-                  <h4 style={{ marginBottom: "10px", color: "var(--text-dark)" }}>Data Management</h4>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <button
-                      onClick={exportLogAsJson}
-                      style={styles.settingsButton("var(--accent-green)")}
-                    >
-                      Export Data
-                    </button>
-                    <button
-                      onClick={handleErase}
-                      style={styles.settingsButton("#dc3545")}
-                    >
-                      Erase All Data
-                    </button>
-                  </div>
-                </div>
+                <JournalQuestions logAction={logAction} />
               </div>
             </div>
           </React.Fragment>

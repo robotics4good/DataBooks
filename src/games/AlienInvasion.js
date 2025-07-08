@@ -5,36 +5,24 @@ import React, { useState, useEffect } from 'react';
 import { useESPData } from "../hooks/useESPData";
 import { useUserLog } from "../UserLog";
 import PlotComponent from "../plots/PlotComponent";
-import LinePlot from '../plots/LinePlot';
-import ScatterPlot from '../plots/ScatterPlot';
-import PiePlot from '../plots/PiePlot';
-import BarPlot from '../plots/BarPlot';
-import HistogramPlot from '../plots/HistogramPlot';
+import { timeService } from '../utils/timeUtils';
 
 // @param {string} sessionId - Unique identifier for this game session (passed from parent)
 const AlienInvasion = () => {
   const { logAction } = useUserLog();
+  const { espData, loading, error, getPlotData } = useESPData();
   
   // Game state
   const [gameState, setGameState] = useState('waiting');
   const [score, setScore] = useState(0);
-  const [level, setLevel] = useState(1);
   const [timeLeft, setTimeLeft] = useState(60);
   const [alienShips, setAlienShips] = useState([]);
   const [playerPosition, setPlayerPosition] = useState({ x: 50, y: 50 });
   
-  // Control ESP data access - no session ID needed
-  const { 
-    espData, 
-    loading, 
-    error, 
-    getPlotData 
-  } = useESPData();
-
-  // Game loop
+  // Game timer
   useEffect(() => {
     if (gameState === 'playing') {
-      const gameTimer = setInterval(() => {
+      const timer = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
             setGameState('gameOver');
@@ -43,22 +31,21 @@ const AlienInvasion = () => {
           return prev - 1;
         });
       }, 1000);
-
-      return () => clearInterval(gameTimer);
+      return () => clearInterval(timer);
     }
   }, [gameState]);
 
-  // Generate alien ships based on ESP data
+  // Generate alien ships from ESP data
   useEffect(() => {
     if (gameState === 'playing' && espData.length > 0) {
-      const newAlienShips = espData.slice(-5).map((dataPoint, index) => ({
-        id: `alien_ship_${Date.now()}_${index}`,
+      const newShips = espData.slice(-5).map((data, index) => ({
+        id: `alien_${timeService.getCurrentTime().getTime()}_${index}`,
         x: Math.random() * 80 + 10,
         y: Math.random() * 80 + 10,
-        intensity: (dataPoint.status || 0), // Use status as intensity
-        type: dataPoint.beaconArray === 1 ? 'interactive' : 'standard' // Use beacon array for type
+        intensity: data.status || 0,
+        type: data.beaconArray === 1 ? 'interactive' : 'standard'
       }));
-      setAlienShips(newAlienShips);
+      setAlienShips(newShips);
     }
   }, [espData, gameState]);
 
@@ -92,109 +79,55 @@ const AlienInvasion = () => {
       }
       
       // Check for alien ship destruction
-      const nearbyAlienShip = alienShips.find(ship => 
+      const nearbyShip = alienShips.find(ship => 
         Math.sqrt((newPos.x - ship.x) ** 2 + (newPos.y - ship.y) ** 2) < 15
       );
       
-      if (nearbyAlienShip) {
-        setScore(prev => prev + Math.floor(nearbyAlienShip.intensity * 100));
-        setAlienShips(prev => prev.filter(o => o.id !== nearbyAlienShip.id));
+      if (nearbyShip) {
+        setScore(prev => prev + Math.floor(nearbyShip.intensity * 100));
+        setAlienShips(prev => prev.filter(ship => ship.id !== nearbyShip.id));
       }
       
       return newPos;
     });
   };
 
-  // Start game
+  // Game controls
   const startGame = () => {
     setGameState('playing');
     setScore(0);
-    setLevel(1);
     setTimeLeft(60);
     setPlayerPosition({ x: 50, y: 50 });
     setAlienShips([]);
+    logAction('Started Alien Invasion game');
   };
 
-  // Reset game
   const resetGame = () => {
     setGameState('waiting');
     setScore(0);
-    setLevel(1);
     setTimeLeft(60);
     setPlayerPosition({ x: 50, y: 50 });
     setAlienShips([]);
+    logAction('Reset Alien Invasion game');
   };
 
-  // Add keyboard listeners
+  // Keyboard listeners
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameState, alienShips]);
-
-  // Custom log action for AlienInvasion plots
-  const handlePlotAction = (action) => {
-    logAction(`AlienInvasion plot: ${action}`);
-  };
-
-  // Transform ESP data for different plot types
-  const getAlienData = (plotType) => {
-    switch (plotType) {
-      case 'line':
-        // Show interaction values over time
-        return getPlotData('line', 'timestamp', 'interaction');
-      
-      case 'scatter':
-        // Scatter plot of interactions vs time
-        return getPlotData('scatter', 'timestamp', 'interaction');
-      
-      case 'bar':
-        // Bar chart of interactions by student
-        return getPlotData('bar');
-      
-      case 'histogram':
-        // Distribution of interaction values
-        return getPlotData('histogram');
-      
-      case 'pie':
-        // Pie chart of interactions by student
-        return getPlotData('pie');
-      
-      default:
-        return getPlotData('line', 'timestamp', 'interaction');
-    }
-  };
-
-  // Only render error message if no session ID
-  if (!espData.length) {
-    return (
-      <div style={{ 
-        padding: 32, 
-        color: '#b00', 
-        fontWeight: 'bold',
-        textAlign: 'center'
-      }}>
-        No ESP data available. Please start a new game session.
-      </div>
-    );
-  }
 
   // Loading state
   if (loading) {
     return (
       <div style={{
         height: "100vh",
-        width: "100%",
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center"
+        justifyContent: "center",
+        fontSize: "1.2rem"
       }}>
-        <div style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>
           Loading Alien Invasion data...
-        </div>
-        <div style={{ fontSize: "0.9rem", color: "#666" }}>
-          Connecting to ESP data source
-        </div>
       </div>
     );
   }
@@ -203,252 +136,184 @@ const AlienInvasion = () => {
   if (error) {
   return (
     <div style={{
-      height: "100vh",           
-      width: "100%",            
-      display: "flex",           
-      flexDirection: "column",   
-      alignItems: "center",      
-      justifyContent: "center"   
-    }}>
-        <div style={{ fontSize: "1.2rem", marginBottom: "1rem", color: "#b00" }}>
-          Error loading Alien Invasion data
-        </div>
-        <div style={{ fontSize: "0.9rem", color: "#666", textAlign: "center" }}>
-          {error}
-        </div>
+        padding: 32,
+        color: '#b00',
+        textAlign: 'center'
+      }}>
+        Error loading ESP data: {error}
       </div>
     );
   }
 
-  // RENDER: USER INTERFACE
+  // No data state
+  if (!espData.length) {
   return (
     <div style={{ 
-      height: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column',
-      backgroundColor: '#f0f8ff',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      {/* Game Header */}
-      <div style={{ 
-        padding: '10px', 
-        backgroundColor: '#2c3e50', 
-        color: 'white',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
+        padding: 32,
+        color: '#666',
+        textAlign: 'center'
       }}>
-        <h2>Alien Invasion - Real ESP Data</h2>
-        <div style={{ display: 'flex', gap: '20px' }}>
-          <span>Score: {score}</span>
-          <span>Level: {level}</span>
-          <span>Time: {timeLeft}s</span>
-        </div>
+        No ESP data available. Please start a new game session.
       </div>
+    );
+  }
 
-      {/* Game Content */}
+  // Game UI components
+  const GameControls = () => (
       <div style={{ 
-        flex: 1, 
-        display: 'flex',
-        gap: '10px',
-        padding: '10px'
-      }}>
-        {/* Game Area */}
+      position: 'absolute',
+      top: 20,
+      left: 20,
+      zIndex: 10,
+      background: 'rgba(0,0,0,0.8)',
+      color: 'white',
+      padding: 15,
+      borderRadius: 10
+    }}>
+      <div>Score: {score}</div>
+      <div>Time: {timeLeft}s</div>
+      <div>Level: {Math.floor(score / 1000) + 1}</div>
+    </div>
+  );
+
+  const GameButtons = () => (
         <div style={{ 
-          flex: '1',
-          position: 'relative',
-          backgroundColor: '#e8f4f8',
-          border: '2px solid #3498db',
-          borderRadius: '10px',
-          overflow: 'hidden'
+      position: 'absolute',
+      top: 20,
+      right: 20,
+      zIndex: 10,
+      display: 'flex',
+      gap: 10
         }}>
           {gameState === 'waiting' && (
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              textAlign: 'center',
-              zIndex: 10
-            }}>
-              <h3>Alien Invasion</h3>
-              <p>Use WASD or arrow keys to move and destroy alien ships!</p>
-              <p>ESP data controls alien ship generation</p>
         <button 
                 onClick={startGame}
                 style={{
                   padding: '10px 20px',
-                  fontSize: '16px',
-                  backgroundColor: '#27ae60',
+            background: '#4CAF50',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '5px',
+            borderRadius: 5,
                   cursor: 'pointer'
                 }}
               >
                 Start Game
         </button>
-            </div>
           )}
 
           {gameState === 'gameOver' && (
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              textAlign: 'center',
-              zIndex: 10,
-              backgroundColor: 'rgba(255,255,255,0.9)',
-              padding: '20px',
-              borderRadius: '10px'
-            }}>
-              <h3>Game Over!</h3>
-              <p>Final Score: {score}</p>
         <button 
                 onClick={resetGame}
                 style={{
                   padding: '10px 20px',
-                  fontSize: '16px',
-                  backgroundColor: '#e74c3c',
+            background: '#2196F3',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '5px',
+            borderRadius: 5,
                   cursor: 'pointer'
                 }}
               >
                 Play Again
         </button>
+      )}
             </div>
-          )}
+  );
 
+  const GameArea = () => (
+    <div style={{
+      position: 'relative',
+      width: '100%',
+      height: '400px',
+      background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+      border: '2px solid #333',
+      borderRadius: 10,
+      overflow: 'hidden'
+    }}>
           {/* Player */}
-          {gameState === 'playing' && (
-            <div style={{
+      <div
+        style={{
               position: 'absolute',
               left: `${playerPosition.x}%`,
               top: `${playerPosition.y}%`,
-              width: '20px',
-              height: '20px',
-              backgroundColor: '#e74c3c',
+          width: 20,
+          height: 20,
+          background: '#FFD700',
               borderRadius: '50%',
               transform: 'translate(-50%, -50%)',
-              zIndex: 5,
-              border: '2px solid #c0392b'
-            }} />
-          )}
-
-          {/* Alien Ships */}
-          {gameState === 'playing' && alienShips.map(ship => (
-            <div
-              key={ship.id}
+          boxShadow: '0 0 10px #FFD700'
+        }}
+      />
+      
+      {/* Alien ships */}
+      {alienShips.map(ship => (
+        <div
+          key={ship.id}
               style={{
                 position: 'absolute',
-                left: `${ship.x}%`,
-                top: `${ship.y}%`,
-                width: `${20 + ship.intensity * 30}px`,
-                height: `${20 + ship.intensity * 30}px`,
-                backgroundColor: ship.type === 'interactive' ? '#9b59b6' : '#f39c12',
+            left: `${ship.x}%`,
+            top: `${ship.y}%`,
+            width: 15,
+            height: 15,
+            background: ship.type === 'interactive' ? '#FF4444' : '#FF8800',
                 borderRadius: '50%',
                 transform: 'translate(-50%, -50%)',
-                zIndex: 3,
-                border: '2px solid #e67e22',
-                animation: 'pulse 1s infinite'
+            boxShadow: `0 0 ${ship.intensity * 5}px ${ship.type === 'interactive' ? '#FF4444' : '#FF8800'}`
               }}
             />
           ))}
+    </div>
+  );
 
-          {/* ESP Data Status */}
+  const GameOverScreen = () => (
           <div style={{
             position: 'absolute',
-            top: '10px',
-            right: '10px',
-            backgroundColor: 'rgba(255,255,255,0.9)',
-            padding: '10px',
-            borderRadius: '5px',
-            fontSize: '12px'
-          }}>
-            <div>ESP Data: {loading ? 'Loading...' : espData.length} points</div>
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      background: 'rgba(0,0,0,0.9)',
+      color: 'white',
+      padding: 30,
+      borderRadius: 10,
+      textAlign: 'center',
+      zIndex: 20
+    }}>
+      <h2>Game Over!</h2>
+      <p>Final Score: {score}</p>
+      <p>Level Reached: {Math.floor(score / 1000) + 1}</p>
           </div>
-        </div>
+  );
 
-        {/* Plots Panel */}
+  return (
         <div style={{ 
-          width: '400px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px'
-        }}>
-          {/* Line Plot */}
-          <div style={{ 
-            height: '200px', 
-            backgroundColor: 'white',
-            border: '1px solid #ddd',
-            borderRadius: '5px',
-            padding: '10px'
-          }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>ESP Interactions Over Time</h4>
-            <LinePlot data={espData} />
+      padding: 20,
+      height: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      position: 'relative'
+    }}>
+      <GameControls />
+      <GameButtons />
+      
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ color: 'white', textAlign: 'center', marginBottom: 20 }}>
+          Alien Invasion
+        </h1>
+        <p style={{ color: 'white', textAlign: 'center', marginBottom: 20 }}>
+          Use arrow keys or WASD to move. Destroy alien ships to score points!
+        </p>
           </div>
 
-          {/* Scatter Plot */}
-          <div style={{ 
-            height: '200px', 
-            backgroundColor: 'white',
-            border: '1px solid #ddd',
-            borderRadius: '5px',
-            padding: '10px'
-          }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>ESP Data Scatter</h4>
-            <ScatterPlot data={espData} />
-          </div>
+      <GameArea />
+      
+      {gameState === 'gameOver' && <GameOverScreen />}
 
-          {/* Bar Plot */}
-          <div style={{ 
-            height: '200px', 
-            backgroundColor: 'white',
-            border: '1px solid #ddd',
-            borderRadius: '5px',
-            padding: '10px'
-          }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>Interactions by Student</h4>
-            <BarPlot data={getAlienData('bar')} />
-          </div>
-
-          {/* Histogram Plot */}
-          <div style={{ 
-            height: '200px', 
-            backgroundColor: 'white',
-            border: '1px solid #ddd',
-            borderRadius: '5px',
-            padding: '10px'
-          }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>Interaction Distribution</h4>
-            <HistogramPlot data={getAlienData('histogram')} />
-          </div>
-
-          {/* Pie Plot */}
-          <div style={{ 
-            height: '200px', 
-            backgroundColor: 'white',
-            border: '1px solid #ddd',
-            borderRadius: '5px',
-            padding: '10px'
-          }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>Student Participation</h4>
-            <PiePlot data={getAlienData('pie')} />
-          </div>
-        </div>
+      <div style={{ marginTop: 20 }}>
+        <PlotComponent
+          data={getPlotData('line')}
+          plotType="line"
+          title="ESP Data Over Time"
+          onAction={(action) => logAction(`AlienInvasion plot: ${action}`)}
+        />
       </div>
-
-      {/* CSS for pulse animation */}
-      <style>{`
-        @keyframes pulse {
-          0% { transform: translate(-50%, -50%) scale(1); }
-          50% { transform: translate(-50%, -50%) scale(1.1); }
-          100% { transform: translate(-50%, -50%) scale(1); }
-        }
-      `}</style>
     </div>
   );
 };

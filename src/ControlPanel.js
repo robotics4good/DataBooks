@@ -1,20 +1,53 @@
 // ControlPanel.js - Comprehensive server data control panel
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ESPDataPlot from './plots/ESPDataPlot';
 import { useESPData } from './hooks/useESPData';
 // Removed useUserLog import - Control Panel actions should not be logged
-import { db, ref, get, set, remove } from './firebase';
-import { formatSanDiegoTime, formatSanDiegoTimeOnly, getSanDiegoTimezoneInfo } from './utils/timeUtils';
+import { db, ref, get, set, remove, onValue } from './firebase';
+import { formatSanDiegoTime, formatSanDiegoTimeOnly, getSanDiegoTimezoneInfo, timeService } from './utils/timeUtils';
 import dataSyncService from './services/dataSyncService';
+import { JOURNAL_QUESTIONS } from './components/JournalQuestions';
+
+const cardStyle = {
+  background: '#fff',
+  borderRadius: '14px',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+  padding: '28px 32px',
+  marginBottom: '28px',
+  maxWidth: '100%',
+};
+const badge = (color, text) => (
+  <span style={{
+    display: 'inline-block',
+    background: color,
+    color: '#fff',
+    borderRadius: 8,
+    padding: '4px 14px',
+    fontWeight: 700,
+    fontSize: 15,
+    marginLeft: 12,
+    marginRight: 0,
+    letterSpacing: 0.5,
+  }}>{text}</span>
+);
+
+const SanDiegoClock = () => {
+  const [now, setNow] = useState(() => timeService.getCurrentTime());
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(timeService.getCurrentTime());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  return <b style={{ fontWeight: 700 }}>{formatSanDiegoTime(now)}</b>;
+};
 
 const ControlPanel = () => {
   const navigate = useNavigate();
   
   const { 
     espData, 
-    loading: espLoading, 
-    error: espError, 
     getPlotData, 
     getAvailableVariables,
     totalPackets,
@@ -28,16 +61,30 @@ const ControlPanel = () => {
   const [timezoneInfo, setTimezoneInfo] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
   const [serverStatus, setServerStatus] = useState('connected');
-  const [latestPackets, setLatestPackets] = useState([]);
+  const [latestPacketsState, setLatestPacketsState] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [lastUpdatedESP, setLastUpdatedESP] = useState(null);
   const [lastUpdatedWebsite, setLastUpdatedWebsite] = useState(null);
   const [espDataState, setESPDataState] = useState({});
   const [websiteDataState, setWebsiteDataState] = useState({});
+  const [journalDataState, setJournalDataState] = useState({});
+  const [espLoading, setESPLoading] = useState(false);
   const [websiteLoading, setWebsiteLoading] = useState(false);
+  const [journalLoading, setJournalLoading] = useState(false);
+  const [espError, setESPError] = useState(null);
   const [websiteError, setWebsiteError] = useState(null);
-  const [showRawWebsiteData, setShowRawWebsiteData] = useState(false);
-  const [showRawESPData, setShowRawESPData] = useState(false);
+  const [journalError, setJournalError] = useState(null);
+  const [espLastRefreshed, setESPLastRefreshed] = useState(null);
+  const [websiteLastRefreshed, setWebsiteLastRefreshed] = useState(null);
+  const [journalLastRefreshed, setJournalLastRefreshed] = useState(null);
+  const [showFullLog, setShowFullLog] = useState(false);
+  const [selectedLogSession, setSelectedLogSession] = useState(null);
+  const logRefs = useRef({});
+  const logScrollTops = useRef({});
+
+  // Session management state
+  const [currentSessionId, setCurrentSessionId] = useState("");
+  const [sessionLoading, setSessionLoading] = useState(false);
 
   // Manual refresh function for server data
   const refreshServerData = async () => {
@@ -55,7 +102,7 @@ const ControlPanel = () => {
         const packets = Object.values(data.devicePackets)
           .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
           .slice(0, 10);
-        setLatestPackets(packets);
+        setLatestPacketsState(packets);
       }
 
       // Fetch NIST time
@@ -79,24 +126,17 @@ const ControlPanel = () => {
   };
 
   const refreshESPData = async () => {
+    setESPLoading(true);
+    setESPError(null);
     try {
       const devicePacketsRef = ref(db, 'devicePackets');
       const snapshot = await get(devicePacketsRef);
       setESPDataState({ devicePackets: snapshot.val() || {} });
-      // Fetch NIST time
-      try {
-        const resp = await fetch('http://worldtimeapi.org/api/timezone/America/Los_Angeles');
-        const nistData = await resp.json();
-        if (nistData && nistData.datetime) {
-          setLastUpdatedESP(new Date(nistData.datetime));
-        } else {
-          setLastUpdatedESP(new Date());
-        }
-      } catch {
-        setLastUpdatedESP(new Date());
-      }
+      setESPLastRefreshed(timeService.getCurrentTime());
     } catch (err) {
-      console.error("Error fetching ESP data:", err);
+      setESPError(err.message);
+    } finally {
+      setESPLoading(false);
     }
   };
 
@@ -104,25 +144,29 @@ const ControlPanel = () => {
     setWebsiteLoading(true);
     setWebsiteError(null);
     try {
-      const syncDataRef = ref(db, 'syncData');
-      const snapshot = await get(syncDataRef);
-      setWebsiteDataState({ sessions: snapshot.val() || {} });
-      // Fetch NIST time
-      try {
-        const resp = await fetch('http://worldtimeapi.org/api/timezone/America/Los_Angeles');
-        const nistData = await resp.json();
-        if (nistData && nistData.datetime) {
-          setLastUpdatedWebsite(new Date(nistData.datetime));
-        } else {
-          setLastUpdatedWebsite(new Date());
-        }
-      } catch {
-        setLastUpdatedWebsite(new Date());
-      }
+      const userActionsRef = ref(db, 'userActions');
+      const userActionsSnap = await get(userActionsRef);
+      setWebsiteDataState({ userActions: userActionsSnap.val() || {} });
+      setWebsiteLastRefreshed(timeService.getCurrentTime());
     } catch (err) {
       setWebsiteError(err.message);
     } finally {
       setWebsiteLoading(false);
+    }
+  };
+
+  const refreshJournalData = async () => {
+    setJournalLoading(true);
+    setJournalError(null);
+    try {
+      const journalEntriesRef = ref(db, 'journalEntries');
+      const journalEntriesSnap = await get(journalEntriesRef);
+      setJournalDataState({ journalEntries: journalEntriesSnap.val() || {} });
+      setJournalLastRefreshed(timeService.getCurrentTime());
+    } catch (err) {
+      setJournalError(err.message);
+    } finally {
+      setJournalLoading(false);
     }
   };
 
@@ -150,10 +194,67 @@ const ControlPanel = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // On initial load, fetch both
+  // Effect to handle scroll position for all logs
   useEffect(() => {
-    refreshESPData();
-    refreshWebsiteData();
+    if (!showFullLog) return;
+    Object.entries(logRefs.current).forEach(([sessionId, ref]) => {
+      if (ref && ref.scrollHeight > ref.clientHeight) {
+        // If user was at bottom before update, keep at bottom
+        const isAtBottom = ref.scrollTop + ref.clientHeight >= ref.scrollHeight - 5;
+        if (isAtBottom) {
+          ref.scrollTop = ref.scrollHeight;
+        }
+        // Otherwise, do not change scroll position
+      }
+    });
+  }, [websiteDataState, showFullLog]);
+
+  // Save scroll position BEFORE update (useLayoutEffect runs before DOM paint)
+  useLayoutEffect(() => {
+    if (!showFullLog) return;
+    Object.entries(logRefs.current).forEach(([sessionId, ref]) => {
+      if (ref) {
+        logScrollTops.current[sessionId] = ref.scrollTop;
+      }
+    });
+  }, [showFullLog, websiteDataState]);
+
+  // Restore scroll position AFTER update
+  useEffect(() => {
+    if (!showFullLog) return;
+    Object.entries(logRefs.current).forEach(([sessionId, ref]) => {
+      if (ref && typeof logScrollTops.current[sessionId] === 'number') {
+        ref.scrollTop = logScrollTops.current[sessionId];
+      }
+    });
+  }, [showFullLog, websiteDataState]);
+
+  // Fetch current session ID from Firebase on mount
+  useEffect(() => {
+    const sessionRef = ref(db, 'activeSessionId');
+    const unsubscribe = onValue(sessionRef, (snapshot) => {
+      setCurrentSessionId(snapshot.val() || "");
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Start a new session and write to Firebase
+  const handleStartSession = useCallback(async () => {
+    setSessionLoading(true);
+    try {
+      const now = timeService.getCurrentTime();
+      const hour = now.getHours();
+      const sessionId = hour < 11 ? 'period1' : 'period2';
+      await set(ref(db, 'activeSessionId'), sessionId);
+      await set(ref(db, `sessions/${sessionId}/meta`), {
+        startedAt: now.toISOString(),
+        createdBy: 'teacher',
+      });
+    } catch (err) {
+      // Optionally log error
+    } finally {
+      setSessionLoading(false);
+    }
   }, []);
 
   const handleBackToGames = () => {
@@ -200,21 +301,10 @@ const ControlPanel = () => {
             }}>
               {key}:
             </span>
-            {typeof value === 'object' && value !== null ? (
-              <div style={{ marginTop: '5px' }}>
-                {renderESPDataTree(value, level + 1)}
-              </div>
+            {typeof value === 'object' ? (
+              <renderESPDataTree data={value} level={level + 1} />
             ) : (
-              <span style={{ 
-                color: '#333', 
-                marginLeft: '10px',
-                background: '#f0f0f0',
-                padding: '2px 6px',
-                borderRadius: '3px',
-                fontSize: '12px'
-              }}>
-                {typeof value === 'string' ? `"${value}"` : JSON.stringify(value)}
-              </span>
+              <span style={{ color: '#666', marginLeft: '8px' }}>{JSON.stringify(value)}</span>
             )}
           </div>
         ))}
@@ -228,10 +318,9 @@ const ControlPanel = () => {
     }
 
     const getColorForKey = (key) => {
-      if (key === 'test-session') return '#ffc107';
-      if (key === 'userActivity') return '#28a745';
-      if (key === 'devicePackets') return '#6c757d';
-      return '#333';
+      if (key.includes('session')) return '#28a745';
+      if (key.includes('user')) return '#17a2b8';
+      return '#6f42c1';
     };
 
     return (
@@ -245,21 +334,10 @@ const ControlPanel = () => {
             }}>
               {key}:
             </span>
-            {typeof value === 'object' && value !== null ? (
-              <div style={{ marginTop: '5px' }}>
-                {renderWebsiteDataTree(value, level + 1)}
-              </div>
+            {typeof value === 'object' ? (
+              <renderWebsiteDataTree data={value} level={level + 1} />
             ) : (
-              <span style={{ 
-                color: '#333', 
-                marginLeft: '10px',
-                background: '#f0f0f0',
-                padding: '2px 6px',
-                borderRadius: '3px',
-                fontSize: '12px'
-              }}>
-                {typeof value === 'string' ? `"${value}"` : JSON.stringify(value)}
-              </span>
+              <span style={{ color: '#666', marginLeft: '8px' }}>{JSON.stringify(value)}</span>
             )}
           </div>
         ))}
@@ -267,827 +345,317 @@ const ControlPanel = () => {
     );
   };
 
-  return (
-    <div style={{ 
-      minHeight: "100vh", 
-      background: "#f5f5f5",
-      color: "#000000",
-      padding: "20px"
-    }}>
-      {/* Header */}
-      <div style={{
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        padding: "20px",
-        borderRadius: "10px",
-        marginBottom: "20px",
-        color: "white",
-        position: "relative"
-      }}>
-        <button
-          onClick={handleBackToGames}
-          style={{
-            position: "absolute",
-            top: "20px",
-            left: "20px",
-            background: "rgba(255,255,255,0.2)",
-            border: "none",
-            color: "white",
-            padding: "8px 16px",
-            borderRadius: "6px",
-            cursor: "pointer",
-            fontSize: "0.9rem",
-            fontWeight: "bold",
-            backdropFilter: "blur(10px)"
-          }}
-        >
-          ← Back to Games
-        </button>
-        <h1 style={{ margin: "0", textShadow: "2px 2px 4px rgba(0,0,0,0.3)" }}>Control Panel</h1>
-        <div style={{ 
-          marginTop: "10px", 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center",
-          fontSize: "0.9rem", 
-          opacity: 0.9,
-          fontWeight: "500"
-        }}>
-          {timezoneInfo && (
-            <span>San Diego Time ({timezoneInfo.abbreviation})</span>
-          )}
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            {/* Firebase Status */}
-            <span style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "8px",
-              background: "rgba(255,255,255,0.1)",
-              padding: "4px 8px",
-              borderRadius: "4px"
-            }}>
-              <span style={{ 
-                width: "8px", 
-                height: "8px", 
-                borderRadius: "50%", 
-                background: "#4CAF50"
-              }}></span>
-              Firebase Connected
-            </span>
-            
-            {/* Sync Status */}
-            {syncStatus && (
-                          <span style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "8px",
-              background: "rgba(255,255,255,0.1)",
-              padding: "4px 8px",
-              borderRadius: "4px"
-            }}>
-              <span style={{ 
-                width: "8px", 
-                height: "8px", 
-                borderRadius: "50%", 
-                background: syncStatus.isRunning ? "#4CAF50" : "#f44336" 
-              }}></span>
-              {syncStatus.isRunning ? "Logging ON" : "Logging OFF"}
-              {syncStatus.isRunning && syncStatus.nextSyncIn && (
-                <span style={{ fontSize: "0.8rem", opacity: 0.8 }}>
-                  Next: {syncStatus.nextSyncIn}
-                </span>
-              )}
-              {!syncStatus.isRunning && (
-                <span style={{ fontSize: "0.8rem", opacity: 0.8 }}>
-                  Click START for one-minute logging
-                </span>
-              )}
-            </span>
-            )}
-          </div>
-        </div>
-      </div>
+  // ESP statistics from useESPData hook
+  const uniqueDevices = uniqueStudents;
+  const totalInteractions = espData.reduce((sum, p) => sum + (parseInt(p.beaconArray) || 0), 0);
+  const totalButtonPresses = espData.reduce((sum, p) => sum + (parseInt(p.buttonA) || 0) + (parseInt(p.buttonB) || 0), 0);
 
-      {/* Data Sync Controls */}
-      <div style={{
-        background: "#ffffff",
-        padding: "20px",
-        borderRadius: "10px",
-        marginBottom: "20px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center", 
-          marginBottom: "15px" 
-        }}>
-          <div>
-            <h3 style={{ margin: "0", color: "#333333", fontWeight: "600" }}>Real-Time Streaming</h3>
-            <p style={{ margin: "5px 0 0 0", fontSize: "0.8rem", color: "#666", fontStyle: "italic" }}>
-              {syncStatus?.isRunning ? "Sending data to server every minute + Firebase immediately" : "No data being sent to server or Firebase"}
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              onClick={handleToggleSync}
-              style={{
-                background: syncStatus?.isRunning ? "#dc3545" : "#28a745",
-                color: "white",
-                border: "none",
-                padding: "8px 16px",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "bold",
-                minWidth: "120px"
-              }}
-            >
-              {syncStatus?.isRunning ? "STOP" : "START"}
-            </button>
-            <button
-              onClick={handleManualSync}
-              style={{
-                background: "#667eea",
-                color: "white",
-                border: "none",
-                padding: "8px 16px",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "bold"
-              }}
-            >
-              Manual Sync
-            </button>
-          </div>
-        </div>
-        
-        {syncStatus && (
-          <div>
-            {!syncStatus.isRunning && (
-              <div style={{
-                background: "#fff3cd",
-                border: "1px solid #ffeaa7",
-                borderRadius: "6px",
-                padding: "12px",
-                marginBottom: "15px",
-                color: "#856404"
-              }}>
-                <strong>Streaming Disabled:</strong> No data is being sent to the server or Firebase. 
-                User actions and journal entries are only stored locally in your browser. 
-                Click the <strong>START</strong> button to enable one-minute logging to server and immediate Firebase logging.
-              </div>
-            )}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px" }}>
-                          <div style={{ color: "#333333", fontWeight: "500" }}>
-              <strong style={{ color: "#667eea" }}>Status:</strong> {syncStatus.isRunning ? "One-Minute Logging Active" : "All Logging Disabled"}
-            </div>
-              <div style={{ color: "#333333", fontWeight: "500" }}>
-                <strong style={{ color: "#667eea" }}>Server:</strong> {syncStatus.syncEndpoint}
-              </div>
-              {syncStatus.lastSyncTime && (
-                <div style={{ color: "#333333", fontWeight: "500" }}>
-                  <strong style={{ color: "#667eea" }}>Last Sync:</strong><br />
-                  {formatSanDiegoTime(syncStatus.lastSyncTime)}
-                </div>
-              )}
-              {syncStatus.isRunning && syncStatus.nextSyncIn && (
-                <div style={{ color: "#333333", fontWeight: "500" }}>
-                  <strong style={{ color: "#667eea" }}>Next Sync:</strong><br />
-                  {syncStatus.nextSyncIn}
-                </div>
-              )}
-            </div>
-          </div>
+  // Website data stats
+  const websiteData = websiteDataState.sessions || {};
+  const sessionCount = Object.keys(websiteData).length;
+  const userActionsCount = (() => {
+    let count = 0;
+    Object.values(websiteData).forEach(session => {
+      Object.values(session).forEach(entry => {
+        if (entry.userActions) count += entry.userActions.length;
+      });
+    });
+    return count;
+  })();
+  const journalEntriesCount = (() => {
+    let count = 0;
+    Object.values(websiteData).forEach(session => {
+      Object.values(session).forEach(entry => {
+        if (entry.journal && entry.journal.answers) count += Object.keys(entry.journal.answers).length;
+      });
+    });
+    return count;
+  })();
+
+  // Device activity (latest 5 packets)
+  const recentPackets = espData
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .slice(0, 5);
+
+  // Real-time data (latest X packets)
+  const latestPackets = espData
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .slice(0, 10);
+
+  // Firebase status
+  const firebaseStatus = serverStatus === 'connected' ? (
+    <span style={{ color: '#28a745', fontWeight: 600 }}>Firebase Connected</span>
+  ) : (
+    <span style={{ color: '#dc3545', fontWeight: 600 }}>Firebase Disconnected</span>
+  );
+
+  // Logging/streaming status
+  const loggingActive = syncStatus?.isRunning;
+
+  // Top bar: Control Panel title and back button only
+  const TopBar = () => (
+    <div style={{ 
+      background: 'linear-gradient(90deg, #6a82fb 0%, #a084ee 100%)',
+      borderRadius: '0 0 18px 18px',
+      padding: '32px 40px 24px 40px',
+      marginBottom: 32,
+      color: '#fff',
+      boxShadow: '0 2px 12px rgba(80,80,180,0.10)',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      position: 'relative',
+      minHeight: 80,
+    }}>
+      <button onClick={handleBackToGames} style={{ background: '#7c8cf8', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 22px', fontWeight: 700, fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>&larr; Back to Games</button>
+      <h1 style={{ margin: 0, fontSize: 38, fontWeight: 800, letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.10)', color: '#fffbe8' }}>Control Panel</h1>
+      <div style={{ width: 180 }} /> {/* Spacer for symmetry */}
+    </div>
+  );
+
+  // Header/status card: all status/info badges and time
+  const HeaderSection = () => (
+    <div style={cardStyle}>
+      <div style={{ display: 'flex', gap: 18, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+        {serverStatus === 'connected' ? badge('#43d675', 'Firebase Connected') : badge('#dc3545', 'Firebase Disconnected')}
+        {badge('#e74c3c', `Logging ${loggingActive ? 'ON' : 'OFF'}`)}
+        <span style={{ fontSize: 18, fontWeight: 500, color: '#222' }}>San Diego Time (PDT): <SanDiegoClock /></span>
+        <span style={{ color: '#007bff', fontWeight: 600, fontSize: 17 }}>Real-Time Streaming</span>
+      </div>
+      <div style={{ color: '#666', fontSize: '0.95rem', marginBottom: 0 }}>
+        {serverStatus === 'connected' ? (
+          loggingActive ? (
+            <>One-minute logging is <b>ENABLED</b>. User actions and journal entries are being sent to the server and Firebase in real time.</>
+          ) : (
+            <>Firebase is connected. Click <b>START</b> to enable one-minute logging to server and Firebase.</>
+          )
+        ) : (
+          <>Firebase connection failed. Check your internet connection and Firebase configuration.</>
         )}
       </div>
+    </div>
+  );
 
-      {/* ESP Device Testing Panel */}
-      <div style={{
-        background: "#ffffff",
-        padding: "20px",
-        borderRadius: "10px",
-        marginBottom: "20px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-          <h3 style={{ margin: "0", color: "#333333", fontWeight: "600" }}>ESP Device Testing Panel</h3>
-                                            <div style={{ 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: "8px",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        background: "#d4edda",
-                        color: "#155724",
-                        fontSize: "0.8rem"
-                      }}>
-                        <span style={{ 
-                          width: "6px", 
-                          height: "6px", 
-                          borderRadius: "50%", 
-                          background: "#28a745" 
-                        }}></span>
-                        Firebase Connected
-                      </div>
+  // Streaming controls card
+  const StreamingControls = () => (
+    <div style={cardStyle}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#222', marginBottom: 2 }}>Real-Time Streaming</div>
+          <div style={{ fontSize: 15, color: '#666', fontStyle: 'italic' }}>{loggingActive ? 'Data is being sent to server and Firebase.' : 'No data being sent to server or Firebase'}</div>
         </div>
-        
-        {/* Real-time ESP Stats */}
-        <div style={{ marginBottom: "20px" }}>
-          <h4 style={{ margin: "0 0 10px 0", color: "#333" }}>ESP Statistics</h4>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "10px" }}>
-            <div style={{ 
-              background: "#f8f9fa", 
-              padding: "10px", 
-              borderRadius: "4px", 
-              textAlign: "center",
-              border: "1px solid #e9ecef"
-            }}>
-              <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#007bff" }}>
-                {espData.length}
-              </div>
-              <div style={{ fontSize: "0.8rem", color: "#666" }}>Total Packets</div>
-            </div>
-            <div style={{ 
-              background: "#f8f9fa", 
-              padding: "10px", 
-              borderRadius: "4px", 
-              textAlign: "center",
-              border: "1px solid #e9ecef"
-            }}>
-              <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#28a745" }}>
-                {uniqueStudents}
-              </div>
-              <div style={{ fontSize: "0.8rem", color: "#666" }}>Active Devices</div>
-            </div>
-            <div style={{ 
-              background: "#f8f9fa", 
-              padding: "10px", 
-              borderRadius: "4px", 
-              textAlign: "center",
-              border: "1px solid #e9ecef"
-            }}>
-              <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#ffc107" }}>
-                {espData.filter(d => d.beaconArray === 1).length}
-              </div>
-              <div style={{ fontSize: "0.8rem", color: "#666" }}>Interactions</div>
-            </div>
-            <div style={{ 
-              background: "#f8f9fa", 
-              padding: "10px", 
-              borderRadius: "4px", 
-              textAlign: "center",
-              border: "1px solid #e9ecef"
-            }}>
-              <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#dc3545" }}>
-                {espData.filter(d => d.buttonA === 1 || d.buttonB === 1).length}
-              </div>
-              <div style={{ fontSize: "0.8rem", color: "#666" }}>Button Presses</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Device Activity Monitor */}
-        <div style={{ marginBottom: "20px" }}>
-          <h4 style={{ margin: "0 0 10px 0", color: "#333" }}>Device Activity</h4>
-          <div style={{ 
-            maxHeight: "200px", 
-            overflow: "auto",
-            background: "#f9f9f9",
-            padding: "10px",
-            borderRadius: "4px",
-            border: "1px solid #e0e0e0"
-          }}>
-            {espData.length > 0 ? (
-              <div style={{ fontSize: "12px" }}>
-                {espData.slice(-10).map((packet, index) => (
-                  <div key={index} style={{ 
-                    padding: "5px", 
-                    margin: "2px 0", 
-                    background: "white", 
-                    borderRadius: "3px",
-                    border: "1px solid #eee"
-                  }}>
-                    <strong>Device {packet.id}</strong> - {formatSanDiegoTimeOnly(packet.timestamp)}
-                    <br />
-                    <span style={{ color: packet.buttonA === 1 ? "#dc3545" : "#666" }}>
-                      Button A: {packet.buttonA}
-                    </span> | 
-                    <span style={{ color: packet.buttonB === 1 ? "#dc3545" : "#666" }}>
-                      Button B: {packet.buttonB}
-                    </span> | 
-                    <span style={{ color: "#007bff" }}>
-                      Status: {packet.status?.toFixed(2) || "0.00"}
-                    </span> | 
-                    <span style={{ color: packet.beaconArray === 1 ? "#28a745" : "#666" }}>
-                      Interaction: {packet.beaconArray ? "YES" : "NO"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ color: "#666", textAlign: "center", padding: "20px" }}>
-                No ESP data received yet. Waiting for devices...
-              </div>
-            )}
-          </div>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <button onClick={handleToggleSync} style={{ background: loggingActive ? '#e74c3c' : '#43d675', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 32px', fontWeight: 800, fontSize: 20, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>{loggingActive ? 'STOP' : 'START'}</button>
+          <button onClick={handleManualSync} style={{ background: '#7c8cf8', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 24px', fontWeight: 700, fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>Manual Sync</button>
         </div>
       </div>
+      <div style={{ background: '#fffbe6', borderRadius: 8, padding: '16px 18px', margin: '18px 0 10px 0', border: '1px solid #ffe58f', color: '#8d6a00', fontWeight: 600, fontSize: 17 }}>
+        <b>Streaming {loggingActive ? 'Enabled' : 'Disabled'}:</b> {loggingActive ? 'User actions and journal entries are being sent to the server and Firebase in real time.' : 'No data is being sent to the server or Firebase. User actions and journal entries are only stored locally in your browser. Click the START button to enable one-minute logging to server and immediate Firebase logging.'}
+      </div>
+      <div style={{ fontWeight: 700, color: '#4a5cff', fontSize: 18, marginTop: 8 }}>
+        Status: <span style={{ color: '#222' }}>{loggingActive ? 'All Logging Enabled' : 'All Logging Disabled'}</span>
+        <span style={{ marginLeft: 32, color: '#4a5cff' }}>Server:</span>
+      </div>
+    </div>
+  );
 
-      {/* Real-Time Data Monitoring */}
-      <div style={{
-        background: "#ffffff",
-        padding: "20px",
-        borderRadius: "8px",
-        marginBottom: "20px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-          <h3 style={{ margin: "0", color: "#333333", fontWeight: "600" }}>Real-Time Data</h3>
-          <span style={{ fontSize: "0.8rem", color: "#666" }}>
-            Latest {latestPackets.length} packets
-          </span>
+  // ESP Device Testing Panel
+  const ESPTestingPanel = () => (
+    <div style={{ background: 'white', borderRadius: 8, padding: 20, marginBottom: 20, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+      <div style={{ display: 'flex', gap: 24, alignItems: 'center', marginBottom: 12 }}>
+        {firebaseStatus}
+        <span style={{ color: '#333', fontWeight: 600 }}>ESP Statistics</span>
+        <span style={{ fontWeight: 700, color: '#1976d2' }}>{totalPackets}</span> Total Packets
+        <span style={{ fontWeight: 700, color: '#2e7d32' }}>{uniqueDevices}</span> Active Devices
+        <span style={{ fontWeight: 700, color: '#7b1fa2' }}>{totalInteractions}</span> Interactions
+        <span style={{ fontWeight: 700, color: '#ff9800' }}>{totalButtonPresses}</span> Button Presses
+      </div>
+      
+      {espError && (
+        <div style={{ background: '#ffe6e6', color: '#d32f2f', padding: '8px 12px', borderRadius: 4, marginBottom: 12, fontSize: '0.9rem' }}>
+          <strong>Error loading ESP data:</strong> {espError}
         </div>
-        
-        <div style={{ 
-          maxHeight: "300px", 
-          overflow: "auto",
-          background: "#f9f9f9",
-          padding: "15px",
-          borderRadius: "4px",
-          border: "1px solid #e0e0e0"
-        }}>
-          {latestPackets.length > 0 ? (
-            <div style={{ fontSize: "12px" }}>
-              {latestPackets.reverse().map((packet, index) => (
-                <div key={index} style={{ 
-                  padding: "8px", 
-                  margin: "4px 0", 
-                  background: "white", 
-                  borderRadius: "4px",
-                  border: "1px solid #eee",
-                  borderLeft: "4px solid #007bff"
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                    <strong style={{ color: "#007bff" }}>{packet.id}</strong>
-                    <span style={{ color: "#666", fontSize: "11px" }}>
-                      {formatSanDiegoTimeOnly(packet.timestamp)}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: "15px", flexWrap: "wrap" }}>
-                    <span style={{ color: packet.buttonA === 1 ? "#dc3545" : "#666" }}>
-                      A: {packet.buttonA}
-                    </span>
-                    <span style={{ color: packet.buttonB === 1 ? "#dc3545" : "#666" }}>
-                      B: {packet.buttonB}
-                    </span>
-                    <span style={{ color: "#007bff" }}>
-                      Status: {packet.status?.toFixed(2) || "0.00"}
-                    </span>
-                    <span style={{ color: packet.beaconArray === 1 ? "#28a745" : "#666" }}>
-                      Interaction: {packet.beaconArray ? "YES" : "NO"}
-                    </span>
-                    <span style={{ color: "#ff9800" }}>
-                      Total: {packet.totalButtons || 0}
-                    </span>
-                  </div>
+      )}
+      
+      <div style={{ marginBottom: 12 }}>
+        <span style={{ color: '#333', fontWeight: 600 }}>Device Activity</span>
+        <div style={{ background: '#f8f9fa', padding: 12, borderRadius: 4, minHeight: 40, marginTop: 6 }}>
+          {espLoading ? (
+            <span style={{ color: '#888' }}>Loading ESP data...</span>
+          ) : recentPackets.length === 0 ? (
+            <span style={{ color: '#888' }}>No ESP data found in Firebase. ESP devices may not be connected or no data has been sent yet.</span>
+          ) : (
+            recentPackets.map((packet, idx) => (
+              <div key={idx} style={{ marginBottom: 6, fontSize: '0.95rem' }}>
+                <b>{packet.id || packet.deviceId || 'Unknown'}</b> @ {packet.timestamp ? formatSanDiegoTime(new Date(packet.timestamp)) : 'N/A'} | 
+                Status: {packet.status?.toFixed(2) || 'N/A'} | 
+                A: {packet.buttonA || 0}, B: {packet.buttonB || 0} | 
+                Beacon: {packet.beaconArray || 0}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+      
+      <div>
+        <span style={{ color: '#333', fontWeight: 600 }}>Real-Time Data</span>
+        <div style={{ background: '#f8f9fa', padding: 12, borderRadius: 4, minHeight: 40, marginTop: 6 }}>
+          {espLoading ? (
+            <span style={{ color: '#888' }}>Loading ESP data...</span>
+          ) : latestPackets.length === 0 ? (
+            <span style={{ color: '#888' }}>No ESP packets found in Firebase. Check if ESP devices are connected and sending data.</span>
+          ) : (
+            <>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Latest {latestPackets.length} packets</div>
+              {latestPackets.map((packet, idx) => (
+                <div key={idx} style={{ fontSize: '0.95rem', marginBottom: 4 }}>
+                  <b>{packet.id || packet.deviceId || 'Unknown'}</b> @ {packet.timestamp ? formatSanDiegoTime(new Date(packet.timestamp)) : 'N/A'} | 
+                  Status: {packet.status?.toFixed(2) || 'N/A'} | 
+                  A: {packet.buttonA || 0}, B: {packet.buttonB || 0} | 
+                  Beacon: {packet.beaconArray || 0}
                 </div>
               ))}
-            </div>
-          ) : (
-            <div style={{ color: "#666", textAlign: "center", padding: "20px" }}>
-              No packets received yet. Send a test packet to see data here!
-            </div>
+            </>
           )}
         </div>
       </div>
+    </div>
+  );
 
-      {/* ESP Device Data */}
-      <div style={{
-        background: "#ffffff",
-        padding: "20px",
-        borderRadius: "8px",
-        marginBottom: "20px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-          <h3 style={{ margin: "0", color: "#333333", fontWeight: "600" }}>ESP Device Data</h3>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <span style={{ fontSize: "0.8rem", color: "#666" }}>
-              Last updated: {lastUpdatedESP ? lastUpdatedESP.toLocaleTimeString() : 'Never'}
-            </span>
-            <button
-              onClick={() => setShowRawESPData(!showRawESPData)}
-              style={{
-                background: showRawESPData ? "#6c757d" : "#28a745",
-                color: "white",
-                border: "none",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.8rem"
-              }}
-            >
-              {showRawESPData ? "Simple View" : "Raw Data"}
-            </button>
-            <button
-              onClick={refreshESPData}
-              style={{
-                background: "#007bff",
-                color: "white",
-                border: "none",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.8rem"
-              }}
-            >
-              Refresh
-            </button>
-          </div>
+  // ESP Data Section: show all ESP packets as raw JSON
+  const ESPDataSection = () => {
+    const devicePackets = espDataState.devicePackets || {};
+    const now = timeService.getCurrentTime();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    // Filter packets from the past hour
+    const filteredPackets = Object.entries(devicePackets)
+      .filter(([_, packet]) => {
+        const ts = packet.timestamp ? new Date(packet.timestamp) : null;
+        return ts && ts >= oneHourAgo && ts <= now;
+      });
+    return (
+      <div style={{ background: 'white', borderRadius: 8, padding: 20, marginBottom: 20, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h2 style={{ margin: 0, color: '#333' }}>ESP Data (Past Hour)</h2>
+          <button onClick={refreshESPData} style={{ background: '#2a6ebb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 18px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }} disabled={espLoading}>{espLoading ? 'Refreshing...' : 'Refresh'}</button>
         </div>
-        
-        {espError && (
-          <div style={{ color: "#ff4444" }}>Error: {espError}</div>
-        )}
-        
-        {!espError && Object.keys(espDataState.devicePackets || {}).length > 0 && (
-          <div>
-            {!showRawESPData ? (
-              // Simple View - Clean ESP Data Display
-              <div>
-                {/* ESP Data Summary */}
-                <div style={{ 
-                  display: "grid", 
-                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-                  gap: "10px", 
-                  marginBottom: "15px" 
-                }}>
-                  <div style={{ 
-                    background: "#e3f2fd", 
-                    padding: "12px", 
-                    borderRadius: "6px", 
-                    border: "1px solid #2196f3",
-                    textAlign: "center"
-                  }}>
-                    <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#1976d2" }}>
-                      {espDataState.devicePackets ? Object.keys(espDataState.devicePackets).length : 0}
-                    </div>
-                    <div style={{ fontSize: "0.9rem", color: "#333" }}>Device Packets</div>
-                  </div>
-                  <div style={{ 
-                    background: "#e8f5e8", 
-                    padding: "12px", 
-                    borderRadius: "6px", 
-                    border: "1px solid #4caf50",
-                    textAlign: "center"
-                  }}>
-                    <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#2e7d32" }}>
-                      {espDataState.devicePackets ? new Set(Object.values(espDataState.devicePackets).map(p => p.id)).size : 0}
-                    </div>
-                    <div style={{ fontSize: "0.9rem", color: "#333" }}>Unique Devices</div>
-                  </div>
-                  <div style={{ 
-                    background: "#fff3e0", 
-                    padding: "12px", 
-                    borderRadius: "6px", 
-                    border: "1px solid #ff9800",
-                    textAlign: "center"
-                  }}>
-                    <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#f57c00" }}>
-                      {espDataState.devicePackets ? Object.values(espDataState.devicePackets).filter(p => p.beaconArray === 1).length : 0}
-                    </div>
-                    <div style={{ fontSize: "0.9rem", color: "#333" }}>Proximity Events</div>
-                  </div>
-                  <div style={{ 
-                    background: "#fce4ec", 
-                    padding: "12px", 
-                    borderRadius: "6px", 
-                    border: "1px solid #e91e63",
-                    textAlign: "center"
-                  }}>
-                    <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#c2185b" }}>
-                      {espDataState.devicePackets ? Object.values(espDataState.devicePackets).filter(p => p.buttonA === 1 || p.buttonB === 1).length : 0}
-                    </div>
-                    <div style={{ fontSize: "0.9rem", color: "#333" }}>Button Events</div>
-                  </div>
-                </div>
-
-                {/* Recent ESP Packets */}
-                <div style={{ marginBottom: "15px" }}>
-                  <h4 style={{ margin: "0 0 10px 0", color: "#333", fontSize: "1rem" }}>Recent Device Packets</h4>
-                  <div style={{ 
-                    maxHeight: "300px", 
-                    overflow: "auto",
-                    background: "#ffffff",
-                    padding: "10px",
-                    borderRadius: "6px",
-                    border: "1px solid #e0e0e0"
-                  }}>
-                    {Object.entries(espDataState.devicePackets || {})
-                      .sort(([,a], [,b]) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
-                      .slice(0, 10)
-                      .map(([key, packet]) => (
-                        <div key={key} style={{ 
-                          padding: "12px", 
-                          margin: "6px 0", 
-                          background: "#f8f9fa", 
-                          borderRadius: "6px",
-                          border: "1px solid #dee2e6",
-                          fontSize: "12px"
-                        }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                            <strong style={{ color: "#007bff" }}>Device {packet.id || 'Unknown'}</strong>
-                            <span style={{ color: "#666", fontSize: "11px" }}>
-                              {packet.timestamp ? new Date(packet.timestamp).toLocaleString() : 'No timestamp'}
-                            </span>
-                          </div>
-                          <div style={{ display: "flex", gap: "15px", flexWrap: "wrap", marginBottom: "8px" }}>
-                            <span style={{ color: packet.buttonA === 1 ? "#dc3545" : "#666" }}>
-                              A: {packet.buttonA || 0}
-                            </span>
-                            <span style={{ color: packet.buttonB === 1 ? "#dc3545" : "#666" }}>
-                              B: {packet.buttonB || 0}
-                            </span>
-                            <span style={{ color: "#007bff" }}>
-                              Status: {packet.status?.toFixed(2) || "0.00"}
-                            </span>
-                            <span style={{ color: packet.beaconArray === 1 ? "#28a745" : "#666" }}>
-                              Proximity: {packet.beaconArray ? "DETECTED" : "NONE"}
-                            </span>
-                            <span style={{ color: "#ff9800" }}>
-                              Total: {packet.totalButtons || 0}
-                            </span>
-                          </div>
-                          {packet.sessionId && (
-                            <div style={{ 
-                              background: "#e9ecef", 
-                              padding: "6px", 
-                              borderRadius: "4px", 
-                              fontSize: "11px",
-                              color: "#495057"
-                            }}>
-                              <strong>Session:</strong> {packet.sessionId}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                </div>
+        <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>Last refreshed: {espLastRefreshed ? formatSanDiegoTime(espLastRefreshed) : 'Never'}</div>
+        {espError && <div style={{ color: '#b00', marginBottom: 8 }}>{espError}</div>}
+        {filteredPackets.length === 0 ? (
+          <div style={{ color: '#888', textAlign: 'center', padding: '20px' }}>No ESP data from the past hour. Click refresh to load.</div>
+        ) : (
+          filteredPackets.map(([packetId, packet]) => (
+            <div key={packetId} style={{ background: '#f8f9fa', borderRadius: 6, padding: 12, marginBottom: 12, fontFamily: 'monospace', fontSize: 13 }}>
+              <b>Packet ID:</b> {packetId}
+              <pre style={{ margin: 0 }}>{JSON.stringify(packet, null, 2)}</pre>
               </div>
-            ) : (
-              // Raw Data View - Complete Firebase Structure
-              <div>
-                <h4 style={{ margin: "0 0 10px 0", color: "#333", fontSize: "1rem" }}>Raw Firebase Data Structure</h4>
-                <div style={{ 
-                  maxHeight: "400px", 
-                  overflow: "auto",
-                  background: "#f8f9fa",
-                  padding: "15px",
-                  borderRadius: "6px",
-                  border: "1px solid #e0e0e0"
-                }}>
-                  <div style={{ 
-                    fontSize: "12px",
-                    color: "#333333",
-                    fontWeight: "500",
-                    lineHeight: "1.6",
-                    fontFamily: "monospace"
-                  }}>
-                    {renderESPDataTree(espDataState.devicePackets || {})}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {!espError && Object.keys(espDataState.devicePackets || {}).length === 0 && (
-          <div style={{ color: "#666", textAlign: "center", padding: "20px" }}>
-            No ESP data loaded. Click "Refresh" to load data from Firebase.
-          </div>
+          ))
         )}
       </div>
+    );
+  };
 
-      {/* Website Data */}
-      <div style={{
-        background: "#ffffff",
-        padding: "20px",
-        borderRadius: "8px",
-        marginBottom: "20px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-          <h3 style={{ margin: "0", color: "#333333", fontWeight: "600" }}>Website Data</h3>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <span style={{ fontSize: "0.8rem", color: "#666" }}>
-              Last updated: {lastUpdatedWebsite ? lastUpdatedWebsite.toLocaleTimeString() : 'Never'}
-            </span>
-            <button
-              onClick={() => setShowRawWebsiteData(!showRawWebsiteData)}
-              style={{
-                background: showRawWebsiteData ? "#6c757d" : "#28a745",
-                color: "white",
-                border: "none",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.8rem"
-              }}
-            >
-              {showRawWebsiteData ? "Simple View" : "Raw Data"}
-            </button>
-            <button
-              onClick={refreshWebsiteData}
-              style={{
-                background: "#007bff",
-                color: "white",
-                border: "none",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.8rem"
-              }}
-            >
-              Refresh
-            </button>
-          </div>
+  // Website Data Section: show all userActions as raw JSON
+  const WebsiteDataSection = () => {
+    const userActions = websiteDataState.userActions || {};
+    const now = timeService.getCurrentTime();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    // Flatten and filter user actions from the past hour
+    const filteredActions = Object.entries(userActions)
+      .flatMap(([sessionId, actions]) =>
+        (Array.isArray(actions) ? actions : Object.values(actions)).map(action => ({ ...action, sessionId }))
+      )
+      .filter(action => {
+        const ts = action.timestamp ? new Date(action.timestamp) : null;
+        return ts && ts >= oneHourAgo && ts <= now;
+      });
+    return (
+      <div style={{ background: 'white', borderRadius: 8, padding: 20, marginBottom: 20, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h2 style={{ margin: 0, color: '#333' }}>Website Data (Past Hour)</h2>
+          <button onClick={refreshWebsiteData} style={{ background: '#2a6ebb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 18px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }} disabled={websiteLoading}>{websiteLoading ? 'Refreshing...' : 'Refresh'}</button>
         </div>
-        
-        {websiteLoading && (
-          <div style={{ color: "#667eea" }}>Loading website data...</div>
-        )}
-        {websiteError && (
-          <div style={{ color: "#ff4444" }}>Error: {websiteError}</div>
-        )}
-        
-        {!websiteError && Object.keys(websiteDataState.sessions || {}).length > 0 && (
-          <div>
-            {!showRawWebsiteData ? (
-              // Simple View - Only Journal Data
-              <div>
-                {/* Website Data Summary */}
-                <div style={{ 
-                  display: "grid", 
-                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-                  gap: "10px", 
-                  marginBottom: "15px" 
-                }}>
-                  <div style={{ 
-                    background: "#e8f5e8", 
-                    padding: "12px", 
-                    borderRadius: "6px", 
-                    border: "1px solid #4caf50",
-                    textAlign: "center"
-                  }}>
-                    <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#2e7d32" }}>
-                      {websiteDataState.sessions ? Object.keys(websiteDataState.sessions).length : 0}
-                    </div>
-                    <div style={{ fontSize: "0.9rem", color: "#333" }}>Sync Sessions</div>
-                  </div>
-                  <div style={{ 
-                    background: "#e3f2fd", 
-                    padding: "12px", 
-                    borderRadius: "6px", 
-                    border: "1px solid #2196f3",
-                    textAlign: "center"
-                  }}>
-                    <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#1976d2" }}>
-                      {websiteDataState.sessions ? Object.values(websiteDataState.sessions).reduce((total, session) => {
-                        return total + (session.userActions ? session.userActions.length : 0);
-                      }, 0) : 0}
-                    </div>
-                    <div style={{ fontSize: "0.9rem", color: "#333" }}>User Actions</div>
-                  </div>
-                  <div style={{ 
-                    background: "#fff3e0", 
-                    padding: "12px", 
-                    borderRadius: "6px", 
-                    border: "1px solid #ff9800",
-                    textAlign: "center"
-                  }}>
-                    <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#f57c00" }}>
-                      {websiteDataState.sessions ? Object.values(websiteDataState.sessions).reduce((total, session) => {
-                        return total + (session.journalData ? Object.keys(session.journalData.answers || {}).length : 0);
-                      }, 0) : 0}
-                    </div>
-                    <div style={{ fontSize: "0.9rem", color: "#333" }}>Journal Entries</div>
-                  </div>
-                </div>
-
-                {/* Recent Journal Entries */}
-                <div style={{ marginBottom: "15px" }}>
-                  <h4 style={{ margin: "0 0 10px 0", color: "#333", fontSize: "1rem" }}>Recent Journal Entries</h4>
-                  <div style={{ 
-                    maxHeight: "300px", 
-                    overflow: "auto",
-                    background: "#ffffff",
-                    padding: "10px",
-                    borderRadius: "6px",
-                    border: "1px solid #e0e0e0"
-                  }}>
-                    {Object.entries(websiteDataState.sessions || {})
-                      .sort(([,a], [,b]) => new Date(b.syncTimestamp || b.uploadedAt || 0) - new Date(a.syncTimestamp || a.uploadedAt || 0))
-                      .slice(0, 5)
-                      .map(([key, session]) => (
-                        <div key={key} style={{ 
-                          padding: "12px", 
-                          margin: "6px 0", 
-                          background: "#f8f9fa", 
-                          borderRadius: "6px",
-                          border: "1px solid #dee2e6",
-                          fontSize: "12px"
-                        }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                            <strong style={{ color: "#007bff" }}>Session {key.slice(-8)}</strong>
-                            <span style={{ color: "#666", fontSize: "11px" }}>
-                              {session.syncTimestamp ? new Date(session.syncTimestamp).toLocaleString() : 
-                               session.uploadedAt ? new Date(session.uploadedAt).toLocaleString() : 'No timestamp'}
-                            </span>
-                          </div>
-                          <div style={{ display: "flex", gap: "15px", flexWrap: "wrap", marginBottom: "8px" }}>
-                                                    <span style={{ color: "#28a745" }}>
-                          User: {session.sessionInfo?.userId || 'Unknown'}
-                        </span>
-                        <span style={{ color: "#007bff" }}>
-                          Game: {session.sessionInfo?.currentGame || 'Unknown'}
-                        </span>
-                        <span style={{ color: "#ff9800" }}>
-                          Actions: {session.userActions ? session.userActions.length : 0}
-                        </span>
-                        <span style={{ color: "#e91e63" }}>
-                          Journal: {session.journalData ? Object.keys(session.journalData.answers || {}).length : 0} entries
-                        </span>
-                          </div>
-                          {session.journalData && session.journalData.answers && Object.keys(session.journalData.answers).length > 0 && (
-                            <div style={{ 
-                              background: "#fff3cd", 
-                              padding: "8px", 
-                              borderRadius: "4px", 
-                              fontSize: "11px",
-                              color: "#856404"
-                            }}>
-                              <strong>Journal Questions:</strong>
-                              {Object.entries(session.journalData.answers).map(([question, answer]) => (
-                                <div key={question} style={{ marginTop: "4px" }}>
-                                  <strong>Q:</strong> {question}<br />
-                                  <strong>A:</strong> {answer}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // Raw Data View - Complete Firebase Structure
-              <div>
-                <h4 style={{ margin: "0 0 10px 0", color: "#333", fontSize: "1rem" }}>Raw Firebase Data Structure</h4>
-                <div style={{ 
-                  maxHeight: "400px", 
-                  overflow: "auto",
-                  background: "#f8f9fa",
-                  padding: "15px",
-                  borderRadius: "6px",
-                  border: "1px solid #e0e0e0"
-                }}>
-                  <div style={{ 
-                    fontSize: "12px",
-                    color: "#333333",
-                    fontWeight: "500",
-                    lineHeight: "1.6",
-                    fontFamily: "monospace"
-                  }}>
-                    {renderWebsiteDataTree(websiteDataState.sessions || {})}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {!websiteError && Object.keys(websiteDataState.sessions || {}).length === 0 && (
-          <div style={{ color: "#666", textAlign: "center", padding: "20px" }}>
-            No website data loaded. Click "Refresh" to load data from Firebase.
-          </div>
+        <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>Last refreshed: {websiteLastRefreshed ? formatSanDiegoTime(websiteLastRefreshed) : 'Never'}</div>
+        {websiteError && <div style={{ color: '#b00', marginBottom: 8 }}>{websiteError}</div>}
+        {filteredActions.length === 0 ? (
+          <div style={{ color: '#888', textAlign: 'center', padding: '20px' }}>No Website data from the past hour. Click refresh to load.</div>
+        ) : (
+          filteredActions.map((action, idx) => (
+            <div key={idx} style={{ background: '#f8f9fa', borderRadius: 6, padding: 12, marginBottom: 12, fontFamily: 'monospace', fontSize: 13 }}>
+              <b>Session:</b> {action.sessionId}
+              <pre style={{ margin: 0 }}>{JSON.stringify(action, null, 2)}</pre>
+            </div>
+          ))
         )}
       </div>
+    );
+  };
 
-      {/* ESP Data Visualization */}
-      <div style={{
-        background: "#ffffff",
-        padding: "20px",
-        borderRadius: "8px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
-      }}>
-        <h3 style={{ margin: "0 0 15px 0", color: "#333333", fontWeight: "600" }}>ESP Data Visualization</h3>
-        <div style={{ height: "500px" }}>
-          <ESPDataPlot 
-            plotLabel="ESP Data" 
-          />
+  // Journal Data Section: show all journalEntries as raw JSON
+  const JournalDataSection = () => {
+    const journalEntries = journalDataState.journalEntries || {};
+    const now = timeService.getCurrentTime();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    // Flatten and filter journal entries from the past hour
+    const filteredEntries = Object.entries(journalEntries)
+      .flatMap(([sessionId, entries]) =>
+        (Array.isArray(entries) ? entries : Object.values(entries)).map(entry => ({ ...entry, sessionId }))
+      )
+      .filter(entry => {
+        const ts = entry.timestamp ? new Date(entry.timestamp) : null;
+        return ts && ts >= oneHourAgo && ts <= now;
+      });
+    return (
+      <div style={{ background: 'white', borderRadius: 8, padding: 20, marginBottom: 20, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h2 style={{ margin: 0, color: '#333' }}>Journal Data (Past Hour)</h2>
+          <button onClick={refreshJournalData} style={{ background: '#2a6ebb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 18px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }} disabled={journalLoading}>{journalLoading ? 'Refreshing...' : 'Refresh'}</button>
         </div>
+        <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>Last refreshed: {journalLastRefreshed ? formatSanDiegoTime(journalLastRefreshed) : 'Never'}</div>
+        {journalError && <div style={{ color: '#b00', marginBottom: 8 }}>{journalError}</div>}
+        {filteredEntries.length === 0 ? (
+          <div style={{ color: '#888', textAlign: 'center', padding: '20px' }}>No Journal data from the past hour. Click refresh to load.</div>
+        ) : (
+          filteredEntries.map((entry, idx) => (
+            <div key={idx} style={{ background: '#f8f9fa', borderRadius: 6, padding: 12, marginBottom: 12, fontFamily: 'monospace', fontSize: 13 }}>
+              <b>Session:</b> {entry.sessionId}
+              <pre style={{ margin: 0 }}>{JSON.stringify(entry, null, 2)}</pre>
+          </div>
+          ))
+        )}
+      </div>
+    );
+  };
+
+  // Session Management UI
+  const SessionManager = () => (
+    <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', padding: 24, margin: '24px 0', display: 'flex', alignItems: 'center', gap: 24 }}>
+      <div>
+        <b>Current Session:</b> {currentSessionId ? <span style={{ color: '#2a6ebb' }}>{currentSessionId}</span> : <span style={{ color: '#888' }}>No session active</span>}
+      </div>
+      <button
+        onClick={handleStartSession}
+        style={{ background: '#2a6ebb', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontWeight: 700, fontSize: 16, cursor: 'pointer' }}
+        disabled={sessionLoading}
+      >
+        {sessionLoading ? 'Starting...' : 'Start New Session'}
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <TopBar />
+      </div>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: 20 }}>
+        <SessionManager />
+        <HeaderSection />
+        <StreamingControls />
+        <ESPTestingPanel />
+        <ESPDataSection />
+        <WebsiteDataSection />
+        <JournalDataSection />
       </div>
     </div>
   );

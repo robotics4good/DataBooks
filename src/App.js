@@ -7,28 +7,19 @@ import ControlPanel from "./ControlPanel";
 import { UserLogProvider } from "./UserLog";
 import "./App.css";
 
-const games = [
-  { name: "Alien Invasion", key: "alien-invasion", enabled: true },
-  { name: "Whisper Web", key: "whisper-web", enabled: false },
-  { name: "Logistics League", key: "logistics-league", enabled: false },
-  { name: "Pollination Party", key: "pollination-party", enabled: false },
-  { name: "Rush Hour Rebels", key: "rush-hour-rebels", enabled: false }
-];
-
-const playerNames = [
-  "Red Fox",
-  "Blue Whale", 
-  "Green Turtle",
-  "Purple Butterfly",
-  "Orange Tiger",
-  "Yellow Lion",
-  "Pink Dolphin",
-  "Brown Bear",
-  "Black Panther",
-  "White Eagle",
-  "Gray Wolf",
-  "Golden Eagle"
-];
+// Game configuration - centralized and maintainable
+const GAME_CONFIG = {
+  games: [
+    { name: "Alien Invasion", key: "alien-invasion", enabled: true },
+    { name: "Whisper Web", key: "whisper-web", enabled: false },
+    { name: "Logistics League", key: "logistics-league", enabled: false },
+    { name: "Pollination Party", key: "pollination-party", enabled: false },
+    { name: "Rush Hour Rebels", key: "rush-hour-rebels", enabled: false }
+  ],
+  playerNames: [
+    "Atlas", "Blaze", "Comet", "Echo", "Falcon", "Gem", "Harbor", "Indigo", "Jade", "Knight", "Luna", "Maverick", "Nova", "Orion", "Phoenix", "Quasar", "Rune", "Stellar", "Vega"
+  ]
+};
 
 const App = () => {
   return (
@@ -39,9 +30,9 @@ const App = () => {
         </div>
         <div className="main-content">
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login/:gameKey" element={<LoginPage />} />
-            <Route path="/games/:gameKey" element={<GamePage />} />
+            <Route path="/" element={<LandingPage gameConfig={GAME_CONFIG} />} />
+            <Route path="/login/:gameKey" element={<LoginPage gameConfig={GAME_CONFIG} />} />
+            <Route path="/games/:gameKey" element={<GamePage gameConfig={GAME_CONFIG} />} />
             <Route path="/control-panel" element={<ControlPanel />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

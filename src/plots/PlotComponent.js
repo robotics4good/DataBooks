@@ -34,7 +34,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
         {plotType === 'pie' ? (
           <PlotRenderer theme={theme} logAction={logAction} />
         ) : (
-          <PlotRenderer data={filteredData} theme={theme} />
+          <PlotRenderer data={data} filteredData={filteredData} theme={theme} />
         )}
       </div>
 

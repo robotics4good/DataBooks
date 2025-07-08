@@ -35,24 +35,24 @@ export function initializeVariableFilters(variables) {
 }
 
 /**
- * Initialize person filter for all player names
+ * Initialize cadet filter for all player names
  * @param {Array} playerNames - Array of player names
  * @returns {Object} - Object with all players set to false
  */
-export function initializePersonFilter(playerNames) {
+export function initializeCadetFilter(playerNames) {
   return playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {});
 }
 
 /**
- * Filter data based on selected variables and person filter
+ * Filter data based on selected variables and cadet filter
  * @param {Array} data - Raw data array
  * @param {Array} xVars - Selected X variables
  * @param {Array} yVars - Selected Y variables
- * @param {Object} personFilter - Person filter object
+ * @param {Object} cadetFilter - Cadet filter object
  * @returns {Array} - Filtered data
  */
-export function filterData(data, xVars, yVars, personFilter) {
-  // TODO: implement filtering based on xVars, yVars, personFilter
+export function filterData(data, xVars, yVars, cadetFilter) {
+  // TODO: implement filtering based on xVars, yVars, cadetFilter
   return data;
 }
 

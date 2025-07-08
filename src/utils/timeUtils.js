@@ -153,4 +153,61 @@ export function getSanDiegoTimezoneInfo() {
 export function isSanDiegoDST() {
   const tzInfo = getSanDiegoTimezoneInfo();
   return tzInfo.isDST;
-} 
+}
+
+// --- TimeService Singleton for 15-min NIST/US Pacific time caching ---
+class TimeService {
+  constructor() {
+    this.nistTime = null; // Date object
+    this.lastSync = null; // Date object
+    this.syncInterval = null;
+    this.isSyncing = false;
+    this.listeners = [];
+    this.start();
+  }
+
+  async fetchNistTime() {
+    this.isSyncing = true;
+    try {
+      const nistTimeStr = await getNistTime();
+      this.nistTime = convertToSanDiegoTime(nistTimeStr);
+      this.lastSync = new Date();
+      this.notifyListeners();
+    } catch (err) {
+      // fallback: use local time
+      this.nistTime = convertToSanDiegoTime(new Date().toISOString());
+      this.lastSync = new Date();
+      this.notifyListeners();
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+
+  start() {
+    this.fetchNistTime();
+    if (this.syncInterval) clearInterval(this.syncInterval);
+    // 10 minutes = 600,000 ms
+    this.syncInterval = setInterval(() => this.fetchNistTime(), 600000);
+  }
+
+  getCurrentTime() {
+    if (!this.nistTime || !this.lastSync) return convertToSanDiegoTime(new Date().toISOString());
+    const now = new Date();
+    const elapsed = now.getTime() - this.lastSync.getTime();
+    // Add elapsed ms to the base San Diego time
+    return new Date(this.nistTime.getTime() + elapsed);
+  }
+
+  // Optional: allow components to listen for time updates
+  subscribe(listener) {
+    this.listeners.push(listener);
+  }
+  unsubscribe(listener) {
+    this.listeners = this.listeners.filter(l => l !== listener);
+  }
+  notifyListeners() {
+    this.listeners.forEach(l => l(this.getCurrentTime()));
+  }
+}
+
+export const timeService = new TimeService(); 
