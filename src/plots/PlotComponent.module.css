@@ -3,7 +3,7 @@
 .plotContainer {
   height: 100%;
   width: 100%;
-  min-height: 0;
+  min-height: 340px;
   display: flex;
   flex-direction: column;
   background: var(--cream-panel);
@@ -17,7 +17,7 @@
 
 .plotRenderer {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 340px;
   width: 100%;
   max-width: 100%;
   display: flex;

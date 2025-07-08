@@ -20,6 +20,7 @@ const styles = {
     height: '100vh',
     background: 'var(--cream-panel)',
     marginTop: '56px',
+    overflow: 'hidden',
   },
   topBar: {
     width: '100%',
@@ -39,7 +40,9 @@ const styles = {
     display: 'flex',
     flex: 1,
     minHeight: 0,
-    minWidth: 0
+    minWidth: 0,
+    height: 'calc(100vh - 56px)',
+    overflow: 'hidden',
   },
   leftPanel: (leftWidth) => ({
     flex: `0 0 ${leftWidth}%`,
@@ -52,7 +55,7 @@ const styles = {
     flexDirection: 'column',
     height: '100%',
     minHeight: 0,
-    maxHeight: 'calc(100vh - 56px)',
+    maxHeight: '100%',
     overflow: 'auto',
     marginBottom: 0,
   }),
@@ -66,8 +69,8 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    minHeight: '340px',
-    maxHeight: 'calc(100vh - 56px)',
+    minHeight: 0,
+    maxHeight: '100%',
     overflow: 'auto',
     marginBottom: 0,
   },
