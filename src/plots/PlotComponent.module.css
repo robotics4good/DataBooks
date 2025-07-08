@@ -10,13 +10,14 @@
   /* border: 2px solid var(--divider-green-light); */
   border-radius: 8px;
   min-width: 0;
-  overflow: hidden;
+  min-height: 0;
   max-width: 100%;
   flex: 1 1 auto;
+  overflow-y: auto;
 }
 
 .plotRenderer {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 340px;
   width: 100%;
   max-width: 100%;
