@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import ESPDataPlot from './plots/ESPDataPlot';
 import { useESPData } from './hooks/useESPData';
 // Removed useUserLog import - Control Panel actions should not be logged
-import { db, ref, get, set, remove, onValue } from './firebase';
-import { formatSanDiegoTime, formatSanDiegoTimeOnly, getSanDiegoTimezoneInfo, timeService } from './utils/timeUtils';
+import { db, ref, get, set, remove, onValue, push } from './firebase';
+import { formatSanDiegoTime, formatSanDiegoTimeOnly, getSanDiegoTimezoneInfo, timeService, getNistTime } from './utils/timeUtils';
 import dataSyncService from './services/dataSyncService';
 import { JOURNAL_QUESTIONS } from './components/JournalQuestions';
 
@@ -85,6 +85,10 @@ const ControlPanel = () => {
   // Session management state
   const [currentSessionId, setCurrentSessionId] = useState("");
   const [sessionLoading, setSessionLoading] = useState(false);
+
+  // Meeting state
+  const [meetingActive, setMeetingActive] = useState(false);
+  const [meetingLoading, setMeetingLoading] = useState(false);
 
   // Manual refresh function for server data
   const refreshServerData = async () => {
@@ -277,6 +281,36 @@ const ControlPanel = () => {
   const handleToggleSync = () => {
     const isNowOn = dataSyncService.toggleSync();
     setSyncStatus(dataSyncService.getSyncStatus());
+  };
+
+  // Log meeting event to Firebase
+  const logMeetingEvent = async (eventType) => {
+    setMeetingLoading(true);
+    try {
+      const nistTime = await getNistTime();
+      const timestamp = nistTime || new Date().toISOString();
+      // Store in a separate top-level 'meetingLogs' collection
+      await push(ref(db, 'meetingLogs'), {
+        event: eventType,
+        timestamp,
+        by: 'teacher',
+      });
+    } catch (err) {
+      // Optionally handle/log error
+    } finally {
+      setMeetingLoading(false);
+    }
+  };
+
+  // Toggle handler
+  const handleMeetingToggle = async () => {
+    if (!meetingActive) {
+      await logMeetingEvent('MEETINGSTART');
+      setMeetingActive(true);
+    } else {
+      await logMeetingEvent('MEETINGEND');
+      setMeetingActive(false);
+    }
   };
 
   const renderESPDataTree = (data, level = 0) => {
@@ -649,6 +683,31 @@ const ControlPanel = () => {
         <TopBar />
       </div>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: 20 }}>
+        {/* Data Meeting Toggle Button */}
+        <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 18 }}>
+          <button
+            onClick={handleMeetingToggle}
+            disabled={meetingLoading}
+            style={{
+              background: meetingActive ? '#e74c3c' : '#43d675',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              padding: '12px 32px',
+              fontWeight: 800,
+              fontSize: 22,
+              cursor: meetingLoading ? 'not-allowed' : 'pointer',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+              transition: 'background 0.2s',
+              marginRight: 16,
+            }}
+          >
+            {meetingActive ? 'End Data Meeting' : 'Start Data Meeting'}
+          </button>
+          <span style={{ fontWeight: 700, fontSize: 20, color: meetingActive ? '#e74c3c' : '#43d675' }}>
+            Data Meeting {meetingActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
         <SessionManager />
         <HeaderSection />
         <StreamingControls />
