@@ -29,14 +29,16 @@ const GamePage = ({ gameConfig }) => {
     navigate('/');
   };
 
-  const handleToggleLayout = () => {
+  const handleToggleLayout = (source) => {
     const newLayout = !dualScreen;
     setDualScreen(newLayout);
-    logAction('navigation', {
-      action: 'layout_toggle',
-      from: dualScreen ? 'dual' : 'single',
-      to: newLayout ? 'dual' : 'single',
-      triggeredBy: 'GamePage',
+    logAction({
+      type: 'navigation',
+      action: 'toggle_screen',
+      details: {
+        to: newLayout ? 'dual' : 'single',
+        triggeredFrom: source
+      },
       timestamp: new Date().toISOString()
     });
   };
@@ -48,7 +50,7 @@ const GamePage = ({ gameConfig }) => {
           selectedGame={currentGame}
           handleBackToGames={handleBackToGames}
           playerNames={gameConfig.playerNames}
-          onToggleLayout={handleToggleLayout}
+          onToggleLayout={() => handleToggleLayout('DualScreenLayout')}
           isDualScreen={true}
         />
       ) : (
@@ -56,7 +58,7 @@ const GamePage = ({ gameConfig }) => {
           selectedGame={currentGame}
           handleBackToGames={handleBackToGames}
           playerNames={gameConfig.playerNames}
-          onToggleLayout={handleToggleLayout}
+          onToggleLayout={() => handleToggleLayout('SingleScreenLayout')}
           isDualScreen={false}
         />
       )}
