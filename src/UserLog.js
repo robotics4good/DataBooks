@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, ref, push, set, onValue, update } from "./firebase";
-import dataSyncService from "./services/dataSyncService";
 import { timeService, getSanDiegoISOString } from './utils/timeUtils';
 import { useRef } from 'react';
 
 const UserLogContext = createContext();
 
-const BATCH_INTERVAL_MS = 10000; // 10 seconds
+const BATCH_INTERVAL_MS = 20000; // 20 seconds
 const BATCH_SIZE = 10;
 
 export const useUserLog = () => {
@@ -31,19 +30,15 @@ export const UserLogProvider = ({ children }) => {
   // Always use sessionId from localStorage
   const sessionId = sanitizeForFirebase(localStorage.getItem('sessionId') || 'unknown');
 
-  // Batch flush function
+  // Batch flush function (now writes the whole batch as an array under the flush timestamp)
   const flushBatch = async () => {
     if (!loggingEnabled || actionBatch.current.length === 0) return;
-    if (dataSyncService.getSyncStatus().isRunning) {
-      const updates = {};
-      for (const action of actionBatch.current) {
-        const timestamp = sanitizeForFirebase(action.timestamp);
-        updates[`sessions/${sessionId}/UserLogs/${userId}/${timestamp}`] = action;
-      }
-      await update(ref(db), updates);
-      actionBatch.current = [];
-      console.log('🔥 Batch sent to Firebase');
-    }
+    const flushTimestampRaw = getSanDiegoISOString(timeService.getCurrentTime());
+    const flushTimestamp = sanitizeForFirebase(flushTimestampRaw);
+    const batchToWrite = actionBatch.current.slice();
+    await set(ref(db, `sessions/${sessionId}/UserLogs/${userId}/${flushTimestamp}`), batchToWrite);
+    actionBatch.current = [];
+    console.log('🔥 Batch sent to Firebase at', flushTimestampRaw, batchToWrite);
   };
 
   // Set up batch timer
@@ -63,9 +58,7 @@ export const UserLogProvider = ({ children }) => {
     return () => window.removeEventListener('beforeunload', handleUnload);
   }, [sessionId, userId, loggingEnabled]);
 
-  // Make logAction async to await the NIST time
-  // type: 'journal_entry', 'plot_interaction', 'navigation'
-  // action: string, timestamp: ISO8601 string, details: object
+  // Log action: add to buffer, flush if buffer reaches BATCH_SIZE
   const logAction = async (type, action, details = {}) => {
     if (!loggingEnabled) return;
     const allowedTypes = ['journal_entry', 'plot_interaction', 'navigation'];
@@ -79,7 +72,6 @@ export const UserLogProvider = ({ children }) => {
     };
     setUserActions(prev => {
       const newActions = [...prev, logPacket];
-      dataSyncService.updateUserActions(newActions);
       return newActions;
     });
     actionBatch.current.push(logPacket);
@@ -90,22 +82,10 @@ export const UserLogProvider = ({ children }) => {
 
   const startLogging = () => setLoggingEnabled(true);
 
-  // Add manual sync function
-  const performManualSync = () => {
-    return dataSyncService.performManualSync();
-  };
-
-  // Get sync status
-  const getSyncStatus = () => {
-    return dataSyncService.getSyncStatus();
-  };
-
   return (
     <UserLogContext.Provider value={{ 
       userActions, 
       logAction, 
-      performManualSync,
-      getSyncStatus,
       startLogging
     }}>
       {children}

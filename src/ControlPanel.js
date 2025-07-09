@@ -7,7 +7,6 @@ import { useUserLog } from './UserLog';
 // Removed useUserLog import - Control Panel actions should not be logged
 import { db, ref, get, set, remove, onValue, push } from './firebase';
 import { formatSanDiegoTime, formatSanDiegoTimeOnly, getSanDiegoTimezoneInfo, timeService, getNistTime, getSanDiegoISOString } from './utils/timeUtils';
-import dataSyncService from './services/dataSyncService';
 import { JOURNAL_QUESTIONS } from './components/JournalQuestions';
 
 const cardStyle = {
@@ -33,17 +32,6 @@ const badge = (color, text) => (
   }}>{text}</span>
 );
 
-const SanDiegoClock = () => {
-  const [now, setNow] = useState(() => timeService.getCurrentTime());
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(timeService.getCurrentTime());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-  return <b style={{ fontWeight: 700 }}>{formatSanDiegoTime(now)}</b>;
-};
-
 // Add a simple toast notification component
 const Toast = ({ message, onClose }) => (
   <div style={{
@@ -65,6 +53,168 @@ const Toast = ({ message, onClose }) => (
   </div>
 );
 
+// User Action Log Viewer component
+const UserActionLogViewer = ({ sessionId }) => {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [viewMode, setViewMode] = useState('clean'); // default to 'clean'
+
+  const fetchLogs = async () => {
+    if (!sessionId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const logsRef = ref(db, `sessions/${sessionId}/UserLogs`);
+      const snapshot = await get(logsRef);
+      const data = snapshot.val() || {};
+      // Flatten: [{userId, timestamp, ...logPacket}] for every log in every batch
+      const flatLogs = [];
+      Object.entries(data).forEach(([userId, userLogs]) => {
+        Object.entries(userLogs || {}).forEach(([batchTimestamp, logArray]) => {
+          if (Array.isArray(logArray)) {
+            logArray.forEach((logPacket) => {
+              flatLogs.push({ userId, batchTimestamp, ...logPacket });
+            });
+          }
+        });
+      });
+      // Sort by event timestamp descending (not batch timestamp)
+      flatLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      setLogs(flatLogs);
+    } catch (err) {
+      setError('Failed to fetch user action logs.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    // eslint-disable-next-line
+  }, [sessionId]);
+
+  // Clean formatter for log entries
+  const formatCleanLog = (log) => {
+    const date = new Date(log.timestamp).toLocaleString();
+    let summary = '';
+    if (log.type === 'journal_entry') {
+      if (log.action === 'submit') {
+        summary = `${log.userId} submitted journal ${log.details?.journalNumber ?? '?'}: answered ${log.details?.answeredCount ?? '?'} of ${log.details?.totalQuestions ?? '?'} questions, total words: ${log.details?.totalWords ?? '?'}`;
+      } else if (log.action === 'click_on') {
+        summary = `${log.userId} clicked ON journal ${log.details?.journalNumber ?? '?'} question ${log.details?.questionIndex ?? '?'} (started editing)`;
+      } else if (log.action === 'click_off') {
+        summary = `${log.userId} clicked OFF journal ${log.details?.journalNumber ?? '?'} question ${log.details?.questionIndex ?? '?'} (word count: ${log.details?.wordCount ?? '?'})`;
+      } else {
+        summary = `${log.userId} journal action '${log.action}' on journal ${log.details?.journalNumber ?? '?'} question ${log.details?.questionIndex ?? '?'} (details: ${JSON.stringify(log.details)})`;
+      }
+    } else if (log.type === 'plot_interaction') {
+      if (log.action === 'y_variable_toggled' || log.action === 'x_variable_toggled') {
+        summary = `${log.userId} toggled ${log.action[0]} variable '${log.details?.variable ?? '?'}' on plot '${log.details?.plotLabel ?? '?'}' (selected: ${log.details?.selected ?? '?'})`;
+      } else if (log.action === 'cadet_filter_toggled') {
+        summary = `${log.userId} toggled cadet '${log.details?.cadet ?? '?'}' on plot '${log.details?.plotLabel ?? '?'}' (selected: ${log.details?.selected ?? '?'})`;
+      } else if (log.action === 'cadet_filter_select_all' || log.action === 'cadet_filter_deselect_all') {
+        summary = `${log.userId} ${log.action.replace('_', ' ')} on plot '${log.details?.plotLabel ?? '?'}'`;
+      } else if (log.action === 'type_changed') {
+        summary = `${log.userId} changed plot type to '${log.details?.newType ?? '?'}' on plot '${log.details?.plotLabel ?? '?'}'`;
+      } else {
+        summary = `${log.userId} plot interaction '${log.action}' on plot '${log.details?.plotLabel ?? '?'}' (details: ${JSON.stringify(log.details)})`;
+      }
+    } else if (log.type === 'navigation') {
+      if (log.action === 'tab_change') {
+        summary = `${log.userId} changed tab from '${log.details?.from ?? '?'}' to '${log.details?.to ?? '?'}'`;
+      } else if (log.action === 'toggle_screen') {
+        summary = `${log.userId} toggled screen to '${log.details?.to ?? '?'}' (triggered from: ${log.details?.triggeredFrom ?? '?'})`;
+      } else {
+        summary = `${log.userId} navigation action '${log.action}' (details: ${JSON.stringify(log.details)})`;
+      }
+    } else {
+      summary = `${log.userId} did '${log.type}' (${log.action}) (details: ${JSON.stringify(log.details)})`;
+    }
+    return `${date} | ${summary}`;
+  };
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', padding: 24, marginBottom: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ margin: 0, fontWeight: 800, fontSize: 22 }}>Recent User Action Logs</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 0, borderRadius: 6, overflow: 'hidden', border: '1.5px solid #e0e6f7', marginRight: 8 }}>
+            <button
+              onClick={() => setViewMode('raw')}
+              style={{
+                background: viewMode === 'raw' ? '#7c8cf8' : '#f7f9fc',
+                color: viewMode === 'raw' ? '#fff' : '#222',
+                border: 'none',
+                padding: '7px 18px',
+                fontWeight: 700,
+                fontSize: 15,
+                cursor: 'pointer',
+                outline: 'none',
+                transition: 'background 0.2s',
+              }}
+            >Raw</button>
+            <button
+              onClick={() => setViewMode('clean')}
+              style={{
+                background: viewMode === 'clean' ? '#7c8cf8' : '#f7f9fc',
+                color: viewMode === 'clean' ? '#fff' : '#222',
+                border: 'none',
+                padding: '7px 18px',
+                fontWeight: 700,
+                fontSize: 15,
+                cursor: 'pointer',
+                outline: 'none',
+                transition: 'background 0.2s',
+              }}
+            >Clean</button>
+          </div>
+          <button onClick={fetchLogs} disabled={loading} style={{ background: '#7c8cf8', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>{loading ? 'Loading...' : 'Refresh'}</button>
+        </div>
+      </div>
+      {error && <div style={{ color: '#b71c1c', marginBottom: 12 }}>{error}</div>}
+      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+        {viewMode === 'raw' ? (
+          <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
+              <thead>
+                <tr style={{ background: '#f7f9fc' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 6px' }}>All Details (Full JSON)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.length === 0 && !loading ? (
+                  <tr><td style={{ color: '#888', textAlign: 'left', padding: 18 }}>No user action logs found for this session.</td></tr>
+                ) : (
+                  logs.map((log, idx) => (
+                    <tr key={log.userId + log.timestamp + idx} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '6px 6px', fontFamily: 'monospace', whiteSpace: 'pre', fontSize: 13, textAlign: 'left' }}>
+                        {JSON.stringify(log, null, 2)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {logs.length === 0 && !loading ? (
+              <li style={{ color: '#888', textAlign: 'center', padding: 18 }}>No user action logs found for this session.</li>
+            ) : (
+              logs.map((log, idx) => (
+                <li key={log.userId + log.timestamp + idx} style={{ borderBottom: '1px solid #eee', padding: '10px 0', fontSize: 15 }}>
+                  {formatCleanLog(log)}
+                </li>
+              ))
+            )}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const ControlPanel = () => {
   const navigate = useNavigate();
   const { logAction } = useUserLog();
@@ -82,22 +232,17 @@ const ControlPanel = () => {
   const [serverLoading, setServerLoading] = useState(false);
   const [serverError, setServerError] = useState(null);
   const [timezoneInfo, setTimezoneInfo] = useState(null);
-  const [syncStatus, setSyncStatus] = useState(null);
   const [serverStatus, setServerStatus] = useState('connected');
   const [latestPacketsState, setLatestPacketsState] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [lastUpdatedESP, setLastUpdatedESP] = useState(null);
   const [lastUpdatedWebsite, setLastUpdatedWebsite] = useState(null);
-  const [espDataState, setESPDataState] = useState({});
   const [websiteDataState, setWebsiteDataState] = useState({});
   const [journalDataState, setJournalDataState] = useState({});
-  const [espLoading, setESPLoading] = useState(false);
   const [websiteLoading, setWebsiteLoading] = useState(false);
   const [journalLoading, setJournalLoading] = useState(false);
-  const [espError, setESPError] = useState(null);
   const [websiteError, setWebsiteError] = useState(null);
   const [journalError, setJournalError] = useState(null);
-  const [espLastRefreshed, setESPLastRefreshed] = useState(null);
   const [websiteLastRefreshed, setWebsiteLastRefreshed] = useState(null);
   const [journalLastRefreshed, setJournalLastRefreshed] = useState(null);
   const [showFullLog, setShowFullLog] = useState(false);
@@ -153,36 +298,6 @@ const ControlPanel = () => {
     }
   };
 
-  const refreshESPData = async () => {
-    setESPLoading(true);
-    setESPError(null);
-    try {
-      const devicePacketsRef = ref(db, 'devicePackets');
-      const snapshot = await get(devicePacketsRef);
-      setESPDataState({ devicePackets: snapshot.val() || {} });
-      setESPLastRefreshed(timeService.getCurrentTime());
-    } catch (err) {
-      setESPError(err.message);
-    } finally {
-      setESPLoading(false);
-    }
-  };
-
-  const refreshJournalData = async () => {
-    setJournalLoading(true);
-    setJournalError(null);
-    try {
-      const journalEntriesRef = ref(db, 'journalEntries');
-      const journalEntriesSnap = await get(journalEntriesRef);
-      setJournalDataState({ journalEntries: journalEntriesSnap.val() || {} });
-      setJournalLastRefreshed(timeService.getCurrentTime());
-    } catch (err) {
-      setJournalError(err.message);
-    } finally {
-      setJournalLoading(false);
-    }
-  };
-
   // Get timezone information
   useEffect(() => {
     setTimezoneInfo(getSanDiegoTimezoneInfo());
@@ -191,20 +306,6 @@ const ControlPanel = () => {
   // Firebase is always connected when the app loads
   useEffect(() => {
     setServerStatus('connected');
-  }, []);
-
-  // Get sync status
-  useEffect(() => {
-    const updateSyncStatus = () => {
-      setSyncStatus(dataSyncService.getSyncStatus());
-    };
-    
-    updateSyncStatus();
-    
-    // Update sync status every 2 seconds for real-time countdown
-    const interval = setInterval(updateSyncStatus, 2000);
-    
-    return () => clearInterval(interval);
   }, []);
 
   // Effect to handle scroll position for all logs
@@ -280,11 +381,6 @@ const ControlPanel = () => {
     navigate('/');
   };
 
-  const handleToggleSync = () => {
-    const isNowOn = dataSyncService.toggleSync();
-    setSyncStatus(dataSyncService.getSyncStatus());
-  };
-
   // Helper to sanitize keys for Firebase paths
   const sanitizeForFirebase = (str) => (str || '').replace(/[.#$\[\]:/]/g, '_');
   const userId = 'teacher'; // Always 'teacher' for meeting logs
@@ -332,39 +428,6 @@ const ControlPanel = () => {
     }
   };
 
-  const renderESPDataTree = (data, level = 0) => {
-    if (!data || typeof data !== 'object') {
-      return <span style={{ color: '#666' }}>{JSON.stringify(data)}</span>;
-    }
-
-    const getColorForKey = (key) => {
-      if (key.includes('ESP_')) return '#dc3545';
-      if (key.includes('TEST_')) return '#fd7e14';
-      return '#007bff';
-    };
-
-    return (
-      <div style={{ marginLeft: level * 20 }}>
-        {Object.entries(data).map(([key, value]) => (
-          <div key={key} style={{ marginBottom: '8px' }}>
-            <span style={{ 
-              fontWeight: 'bold', 
-              color: getColorForKey(key),
-              cursor: 'pointer'
-            }}>
-              {key}:
-            </span>
-            {typeof value === 'object' ? (
-              <renderESPDataTree data={value} level={level + 1} />
-            ) : (
-              <span style={{ color: '#666', marginLeft: '8px' }}>{JSON.stringify(value)}</span>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   const renderWebsiteDataTree = (data, level = 0) => {
     if (!data || typeof data !== 'object') {
       return <span style={{ color: '#666' }}>{JSON.stringify(data)}</span>;
@@ -397,11 +460,6 @@ const ControlPanel = () => {
       </div>
     );
   };
-
-  // ESP statistics from useESPData hook
-  const uniqueDevices = uniqueStudents;
-  const totalInteractions = espData.reduce((sum, p) => sum + (parseInt(p.beaconArray) || 0), 0);
-  const totalButtonPresses = espData.reduce((sum, p) => sum + (parseInt(p.buttonA) || 0) + (parseInt(p.buttonB) || 0), 0);
 
   // Website data stats
   const websiteData = websiteDataState.sessions || {};
@@ -443,7 +501,7 @@ const ControlPanel = () => {
   );
 
   // Logging/streaming status
-  const loggingActive = syncStatus?.isRunning;
+  const loggingActive = false; // dataSyncService.getSyncStatus()?.isRunning;
 
   // Top bar: Control Panel title and back button only
   const TopBar = () => (
@@ -462,27 +520,36 @@ const ControlPanel = () => {
     }}>
       <button onClick={handleBackToGames} style={{ background: '#7c8cf8', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 22px', fontWeight: 700, fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>&larr; Back to Games</button>
       <h1 style={{ margin: 0, fontSize: 38, fontWeight: 800, letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.10)', color: '#fffbe8' }}>Control Panel</h1>
-      <div style={{ width: 180 }} /> {/* Spacer for symmetry */}
+      <div style={{ width: 180, position: 'relative', height: 0 }}>
+        <div style={{
+          position: 'absolute',
+          right: 0,
+          bottom: -18,
+          fontSize: 13,
+          padding: '3px 12px',
+          borderRadius: 10,
+          background: serverStatus === 'connected' ? '#43d675' : '#dc3545',
+          color: '#fff',
+          fontWeight: 700,
+          boxShadow: '0 1px 4px #e0e6f7',
+          minWidth: 0,
+          whiteSpace: 'nowrap',
+          zIndex: 2,
+        }}>
+          {serverStatus === 'connected' ? 'Firebase Connected' : 'Firebase Disconnected'}
+        </div>
+      </div>
     </div>
   );
 
   // Header/status card: all status/info badges and time
-  const HeaderSection = () => (
-    <div style={cardStyle}>
+  const HeaderSection = ({ noCard, hideLogging }) => (
+    <div style={{ padding: 0, margin: 0 }}>
       <div style={{ display: 'flex', gap: 18, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
         {serverStatus === 'connected' ? badge('#43d675', 'Firebase Connected') : badge('#dc3545', 'Firebase Disconnected')}
-        {badge('#e74c3c', `Logging ${loggingActive ? 'ON' : 'OFF'}`)}
-        <span style={{ fontSize: 18, fontWeight: 500, color: '#222' }}>San Diego Time (PDT): <SanDiegoClock /></span>
-        <span style={{ color: '#007bff', fontWeight: 600, fontSize: 17 }}>Real-Time Streaming</span>
       </div>
       <div style={{ color: '#666', fontSize: '0.95rem', marginBottom: 0 }}>
-        {serverStatus === 'connected' ? (
-          loggingActive ? (
-            <>One-minute logging is <b>ENABLED</b>. User actions and journal entries are being sent to the server and Firebase in real time.</>
-          ) : (
-            <>Firebase is connected. Click <b>START</b> to enable one-minute logging to server and Firebase.</>
-          )
-        ) : (
+        {serverStatus !== 'connected' && (
           <>Firebase connection failed. Check your internet connection and Firebase configuration.</>
         )}
       </div>
@@ -498,7 +565,7 @@ const ControlPanel = () => {
           <div style={{ fontSize: 15, color: '#666', fontStyle: 'italic' }}>{loggingActive ? 'Data is being sent to server and Firebase.' : 'No data being sent to server or Firebase'}</div>
         </div>
         <div style={{ display: 'flex', gap: 16 }}>
-          <button onClick={handleToggleSync} style={{ background: loggingActive ? '#e74c3c' : '#43d675', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 32px', fontWeight: 800, fontSize: 20, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>{loggingActive ? 'STOP' : 'START'}</button>
+          <button onClick={() => {}} style={{ background: loggingActive ? '#e74c3c' : '#43d675', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 32px', fontWeight: 800, fontSize: 20, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>{loggingActive ? 'STOP' : 'START'}</button>
         </div>
       </div>
       <div style={{ background: '#fffbe6', borderRadius: 8, padding: '16px 18px', margin: '18px 0 10px 0', border: '1px solid #ffe58f', color: '#8d6a00', fontWeight: 600, fontSize: 17 }}>
@@ -510,138 +577,6 @@ const ControlPanel = () => {
       </div>
     </div>
   );
-
-  // ESP Device Testing Panel
-  const ESPTestingPanel = () => (
-    <div style={{ background: 'white', borderRadius: 8, padding: 20, marginBottom: 20, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-      <div style={{ display: 'flex', gap: 24, alignItems: 'center', marginBottom: 12 }}>
-        {firebaseStatus}
-        <span style={{ color: '#333', fontWeight: 600 }}>ESP Statistics</span>
-        <span style={{ fontWeight: 700, color: '#1976d2' }}>{totalPackets}</span> Total Packets
-        <span style={{ fontWeight: 700, color: '#2e7d32' }}>{uniqueDevices}</span> Active Devices
-        <span style={{ fontWeight: 700, color: '#7b1fa2' }}>{totalInteractions}</span> Interactions
-        <span style={{ fontWeight: 700, color: '#ff9800' }}>{totalButtonPresses}</span> Button Presses
-      </div>
-      
-      {espError && (
-        <div style={{ background: '#ffe6e6', color: '#d32f2f', padding: '8px 12px', borderRadius: 4, marginBottom: 12, fontSize: '0.9rem' }}>
-          <strong>Error loading ESP data:</strong> {espError}
-        </div>
-      )}
-      
-      <div style={{ marginBottom: 12 }}>
-        <span style={{ color: '#333', fontWeight: 600 }}>Device Activity</span>
-        <div style={{ background: '#f8f9fa', padding: 12, borderRadius: 4, minHeight: 40, marginTop: 6 }}>
-          {espLoading ? (
-            <span style={{ color: '#888' }}>Loading ESP data...</span>
-          ) : recentPackets.length === 0 ? (
-            <span style={{ color: '#888' }}>No ESP data found in Firebase. ESP devices may not be connected or no data has been sent yet.</span>
-          ) : (
-            recentPackets.map((packet, idx) => (
-              <div key={idx} style={{ marginBottom: 6, fontSize: '0.95rem' }}>
-                <b>{packet.id || packet.deviceId || 'Unknown'}</b> @ {packet.timestamp ? formatSanDiegoTime(new Date(packet.timestamp)) : 'N/A'} | 
-                Status: {packet.status?.toFixed(2) || 'N/A'} | 
-                A: {packet.buttonA || 0}, B: {packet.buttonB || 0} | 
-                Beacon: {packet.beaconArray || 0}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-      
-      <div>
-        <span style={{ color: '#333', fontWeight: 600 }}>Real-Time Data</span>
-        <div style={{ background: '#f8f9fa', padding: 12, borderRadius: 4, minHeight: 40, marginTop: 6 }}>
-          {espLoading ? (
-            <span style={{ color: '#888' }}>Loading ESP data...</span>
-          ) : latestPackets.length === 0 ? (
-            <span style={{ color: '#888' }}>No ESP packets found in Firebase. Check if ESP devices are connected and sending data.</span>
-          ) : (
-            <>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Latest {latestPackets.length} packets</div>
-              {latestPackets.map((packet, idx) => (
-                <div key={idx} style={{ fontSize: '0.95rem', marginBottom: 4 }}>
-                  <b>{packet.id || packet.deviceId || 'Unknown'}</b> @ {packet.timestamp ? formatSanDiegoTime(new Date(packet.timestamp)) : 'N/A'} | 
-                  Status: {packet.status?.toFixed(2) || 'N/A'} | 
-                  A: {packet.buttonA || 0}, B: {packet.buttonB || 0} | 
-                  Beacon: {packet.beaconArray || 0}
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  // ESP Data Section: show all ESP packets as raw JSON
-  const ESPDataSection = () => {
-    const devicePackets = espDataState.devicePackets || {};
-    const now = timeService.getCurrentTime();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    // Filter packets from the past hour
-    const filteredPackets = Object.entries(devicePackets)
-      .filter(([_, packet]) => {
-        const ts = packet.timestamp ? new Date(packet.timestamp) : null;
-        return ts && ts >= oneHourAgo && ts <= now;
-      });
-    return (
-      <div style={{ background: 'white', borderRadius: 8, padding: 20, marginBottom: 20, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <h2 style={{ margin: 0, color: '#333' }}>ESP Data (Past Hour)</h2>
-          <button onClick={refreshESPData} style={{ background: '#2a6ebb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 18px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }} disabled={espLoading}>{espLoading ? 'Refreshing...' : 'Refresh'}</button>
-        </div>
-        <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>Last refreshed: {espLastRefreshed ? formatSanDiegoTime(espLastRefreshed) : 'Never'}</div>
-        {espError && <div style={{ color: '#b00', marginBottom: 8 }}>{espError}</div>}
-        {filteredPackets.length === 0 ? (
-          <div style={{ color: '#888', textAlign: 'center', padding: '20px' }}>No ESP data from the past hour. Click refresh to load.</div>
-        ) : (
-          filteredPackets.map(([packetId, packet]) => (
-            <div key={packetId} style={{ background: '#f8f9fa', borderRadius: 6, padding: 12, marginBottom: 12, fontFamily: 'monospace', fontSize: 13 }}>
-              <b>Packet ID:</b> {packetId}
-              <pre style={{ margin: 0 }}>{JSON.stringify(packet, null, 2)}</pre>
-              </div>
-          ))
-        )}
-      </div>
-    );
-  };
-
-  // Journal Data Section: show all journalEntries as raw JSON
-  const JournalDataSection = () => {
-    const journalEntries = journalDataState.journalEntries || {};
-    const now = timeService.getCurrentTime();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    // Flatten and filter journal entries from the past hour
-    const filteredEntries = Object.entries(journalEntries)
-      .flatMap(([sessionId, entries]) =>
-        (Array.isArray(entries) ? entries : Object.values(entries)).map(entry => ({ ...entry, sessionId }))
-      )
-      .filter(entry => {
-        const ts = entry.timestamp ? new Date(entry.timestamp) : null;
-        return ts && ts >= oneHourAgo && ts <= now;
-      });
-    return (
-      <div style={{ background: 'white', borderRadius: 8, padding: 20, marginBottom: 20, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <h2 style={{ margin: 0, color: '#333' }}>Journal Data (Past Hour)</h2>
-          <button onClick={refreshJournalData} style={{ background: '#2a6ebb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 18px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }} disabled={journalLoading}>{journalLoading ? 'Refreshing...' : 'Refresh'}</button>
-        </div>
-        <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>Last refreshed: {journalLastRefreshed ? formatSanDiegoTime(journalLastRefreshed) : 'Never'}</div>
-        {journalError && <div style={{ color: '#b00', marginBottom: 8 }}>{journalError}</div>}
-        {filteredEntries.length === 0 ? (
-          <div style={{ color: '#888', textAlign: 'center', padding: '20px' }}>No Journal data from the past hour. Click refresh to load.</div>
-        ) : (
-          filteredEntries.map((entry, idx) => (
-            <div key={idx} style={{ background: '#f8f9fa', borderRadius: 6, padding: 12, marginBottom: 12, fontFamily: 'monospace', fontSize: 13 }}>
-              <b>Session:</b> {entry.sessionId}
-              <pre style={{ margin: 0 }}>{JSON.stringify(entry, null, 2)}</pre>
-          </div>
-          ))
-        )}
-      </div>
-    );
-  };
 
   // Session Management UI
   const SessionManager = () => (
@@ -666,55 +601,126 @@ const ControlPanel = () => {
         <TopBar />
       </div>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: 20 }}>
-        {/* Data Meeting Toggle Button */}
-        <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 18 }}>
-          <button
-            onClick={handleMeetingToggle}
-            disabled={meetingLoading}
-            style={{
-              background: meetingActive ? '#e74c3c' : '#43d675',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 10,
-              padding: '12px 32px',
-              fontWeight: 800,
-              fontSize: 22,
-              cursor: meetingLoading ? 'not-allowed' : 'pointer',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+        {/* --- GAME RUNNING SECTION --- */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '16px',
+          boxShadow: '0 2px 12px rgba(80,80,180,0.10)',
+          padding: '32px 32px 24px 32px',
+          marginBottom: '38px',
+          maxWidth: '100%',
+          border: '1.5px solid #e0e6f7',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}>
+          <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, color: '#2a2a2a', marginBottom: 32, textAlign: 'center', width: '100%' }}>
+            Game Control Center
+          </div>
+          {/* Data Meeting controls: button and status in one line */}
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 28, width: '100%' }}>
+            <button
+              onClick={handleMeetingToggle}
+              disabled={meetingLoading}
+              style={{
+                background: meetingActive ? '#e74c3c' : '#43d675',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                padding: '12px 28px',
+                fontWeight: 800,
+                fontSize: 18,
+                cursor: meetingLoading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+                minWidth: 170,
+                outline: 'none',
+                borderBottom: meetingActive ? '3px solid #b71c1c' : '3px solid #1e824c',
+                filter: meetingLoading ? 'brightness(0.95)' : 'none',
+                transition: 'background 0.2s, box-shadow 0.2s',
+              }}
+            >
+              {meetingLoading ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <span className="spinner" style={{
+                    width: 20, height: 20, border: '3px solid #fff', borderTop: '3px solid #888', borderRadius: '50%', display: 'inline-block', marginRight: 10, animation: 'spin 1s linear infinite'
+                  }} />
+                  {meetingActive ? 'Ending...' : 'Starting...'}
+                </span>
+              ) : (
+                meetingActive ? 'End Data Meeting' : 'Start Data Meeting'
+              )}
+            </button>
+            <span style={{
+              fontWeight: 700,
+              fontSize: 16,
+              color: meetingActive ? '#e74c3c' : '#43d675',
+              background: meetingActive ? '#fbeaea' : '#eafbf0',
+              borderRadius: 16,
+              padding: '6px 18px',
+              boxShadow: '0 1px 4px #e0e6f7',
+              letterSpacing: 0.2,
+              display: 'inline-block',
               transition: 'background 0.2s',
-              marginRight: 16,
-              position: 'relative',
-              minWidth: 220
-            }}
-          >
-            {meetingLoading ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <span className="spinner" style={{
-                  width: 22, height: 22, border: '3px solid #fff', borderTop: '3px solid #888', borderRadius: '50%', display: 'inline-block', marginRight: 12, animation: 'spin 1s linear infinite'
-                }} />
-                {meetingActive ? 'Ending...' : 'Starting...'}
-              </span>
-            ) : (
-              meetingActive ? 'End Data Meeting' : 'Start Data Meeting'
-            )}
-          </button>
-          <span style={{ fontWeight: 700, fontSize: 20, color: meetingActive ? '#e74c3c' : '#43d675' }}>
-            Data Meeting {meetingActive ? 'Active' : 'Inactive'}
-          </span>
+              marginLeft: 8,
+            }}>
+              Data Meeting {meetingActive ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+          {/* Session controls row */}
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12, width: '100%' }}>
+            <button
+              onClick={handleStartSession}
+              style={{
+                background: '#2a6ebb',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                padding: '12px 28px',
+                fontWeight: 800,
+                fontSize: 18,
+                cursor: sessionLoading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 1px 4px #e0e6f7',
+                outline: 'none',
+                borderBottom: '3px solid #1a4a8a',
+                transition: 'background 0.2s',
+              }}
+              disabled={sessionLoading}
+            >
+              {sessionLoading ? 'Starting...' : 'Start New Session'}
+            </button>
+            <span style={{
+              fontWeight: 700,
+              fontSize: 16,
+              color: currentSessionId ? '#2a6ebb' : '#888',
+              background: currentSessionId ? '#eaf0fb' : '#f3f3f3',
+              borderRadius: 16,
+              padding: '6px 18px',
+              boxShadow: '0 1px 4px #e0e6f7',
+              letterSpacing: 0.2,
+              display: 'inline-block',
+              transition: 'background 0.2s',
+              marginLeft: 8,
+            }}>
+              {currentSessionId ? currentSessionId : 'No session active'}
+            </span>
+          </div>
+          {/* Firebase error message if not connected */}
+          {serverStatus !== 'connected' && (
+            <div style={{ color: '#b71c1c', background: '#fbeaea', borderRadius: 8, padding: '10px 18px', margin: '0 0 18px 0', textAlign: 'center', fontWeight: 600, fontSize: 15 }}>
+              Firebase connection failed. Check your internet connection and Firebase configuration.
+            </div>
+          )}
         </div>
-        {/* Add spinner keyframes */}
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-        <SessionManager />
-        <HeaderSection />
-        <StreamingControls />
-        <ESPTestingPanel />
-        <ESPDataSection />
-        <JournalDataSection />
+        {/* --- END GAME RUNNING SECTION --- */}
+
+        {/* --- TESTING & DATA INSPECTION SECTION --- */}
+        <hr style={{ margin: '40px 0', border: 0, borderTop: '2px solid #e0e0e0' }} />
+        <div style={{ marginBottom: 40 }}>
+          <h2 style={{ color: '#7c8cf8', fontWeight: 800, marginBottom: 24, textAlign: 'center' }}>Testing & Data Inspection</h2>
+          <UserActionLogViewer sessionId={currentSessionId} />
+        </div>
+        {/* --- END TESTING & DATA INSPECTION SECTION --- */}
       </div>
     </div>
   );
