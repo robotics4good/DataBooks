@@ -40,7 +40,7 @@ export function usePlotState(plotLabel, logAction) {
     setXVars([]);
     setYVars([]);
     if (logAction) {
-      logAction(`${plotLabel} type changed to: ${newPlotType}`);
+      logAction('plot_interaction', { action: 'type_changed', plotLabel, newPlotType });
     }
   };
 
@@ -50,7 +50,7 @@ export function usePlotState(plotLabel, logAction) {
     const newXVars = isSelected ? [] : [variable];
     setXVars(newXVars);
     if (logAction) {
-      logAction(`${plotLabel} x variable toggled: ${variable}`);
+      logAction('plot_interaction', { action: 'x_variable_toggled', plotLabel, variable, selected: !isSelected });
     }
   };
 
@@ -60,7 +60,7 @@ export function usePlotState(plotLabel, logAction) {
     const newYVars = isSelected ? [] : [variable];
     setYVars(newYVars);
     if (logAction) {
-      logAction(`${plotLabel} y variable toggled: ${variable}`);
+      logAction('plot_interaction', { action: 'y_variable_toggled', plotLabel, variable, selected: !isSelected });
     }
   };
 
@@ -73,7 +73,7 @@ export function usePlotState(plotLabel, logAction) {
     
     setXVars(newXVars);
     if (logAction) {
-      logAction(`${plotLabel} histogram x variable toggled: ${variable}`);
+      logAction('plot_interaction', { action: 'histogram_x_variable_toggled', plotLabel, variable, selected: !isSelected });
     }
   };
 
@@ -81,7 +81,7 @@ export function usePlotState(plotLabel, logAction) {
   const handlePieVariableSelect = (variable) => {
     setXVars([variable]); // Pie plots only allow one variable
     if (logAction) {
-      logAction(`${plotLabel} variable set to: ${variable}`);
+      logAction('plot_interaction', { action: 'pie_variable_selected', plotLabel, variable });
     }
   };
 
@@ -90,7 +90,7 @@ export function usePlotState(plotLabel, logAction) {
     const newValue = !cadetFilter[name];
     setCadetFilter(prev => ({ ...prev, [name]: newValue }));
     if (logAction) {
-      logAction(`${plotLabel} cadet filter toggled: ${name} ${newValue ? 'selected' : 'deselected'}`);
+      logAction('plot_interaction', { action: 'cadet_filter_toggled', plotLabel, cadet: name, selected: newValue });
     }
   };
 
@@ -98,13 +98,13 @@ export function usePlotState(plotLabel, logAction) {
   const onSelectAllCadets = () => {
     setCadetFilter(playerNames.reduce((acc, name) => ({ ...acc, [name]: true }), {}));
     if (logAction) {
-      logAction(`${plotLabel} cadet filter: select all`);
+      logAction('plot_interaction', { action: 'cadet_filter_select_all', plotLabel });
     }
   };
   const onDeselectAllCadets = () => {
     setCadetFilter(playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
     if (logAction) {
-      logAction(`${plotLabel} cadet filter: deselect all`);
+      logAction('plot_interaction', { action: 'cadet_filter_deselect_all', plotLabel });
     }
   };
 

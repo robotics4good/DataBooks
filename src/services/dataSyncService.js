@@ -106,10 +106,8 @@ class DataSyncService {
       const userActions = this.getUserActions();
       const journalData = this.getJournalData();
       const sessionId = this.getSessionId();
-      // Sync user actions (hybrid: latest + append)
-      await this.syncUserActionsToFirebase(sessionId, userActions, syncTimestamp);
-      // Sync journal entries (hybrid: latest + append)
-      await this.syncJournalEntriesToFirebase(sessionId, journalData, syncTimestamp);
+      // Remove syncJournalEntriesToFirebase and all journalEntries legacy sync logic
+      // Only allow journal entries to be written to sessions/{sessionId}/JournalEntries/{studentId}/... via submit button
       // Update last sync time
       this.lastSyncTime = syncTimestamp;
       console.log('Data sync to Firebase completed successfully:', {
@@ -122,50 +120,6 @@ class DataSyncService {
     } catch (error) {
       console.error('Data sync to Firebase failed:', error);
       return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Sync user actions to Firebase (hybrid: overwrite latest and append to history)
-   */
-  async syncUserActionsToFirebase(sessionId, userActions, syncTimestamp) {
-    try {
-      const userActionsLatestRef = ref(db, `userActions/${sessionId}/latest`);
-      await set(userActionsLatestRef, {
-        actions: userActions,
-        lastUpdated: syncTimestamp
-      });
-      // Append to history
-      const userActionsHistoryRef = ref(db, `userActions/${sessionId}/history`);
-      await push(userActionsHistoryRef, {
-        actions: userActions,
-        timestamp: syncTimestamp
-      });
-    } catch (error) {
-      console.error('Failed to sync user actions to Firebase:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Sync journal entries to Firebase (hybrid: overwrite latest and append to history)
-   */
-  async syncJournalEntriesToFirebase(sessionId, journalData, syncTimestamp) {
-    try {
-      const journalEntriesLatestRef = ref(db, `journalEntries/${sessionId}/latest`);
-      await set(journalEntriesLatestRef, {
-        answers: journalData.answers,
-        lastUpdated: syncTimestamp
-      });
-      // Append to history
-      const journalEntriesHistoryRef = ref(db, `journalEntries/${sessionId}/history`);
-      await push(journalEntriesHistoryRef, {
-        answers: journalData.answers,
-        timestamp: syncTimestamp
-      });
-    } catch (error) {
-      console.error('Failed to sync journal entries to Firebase:', error);
-      throw error;
     }
   }
 
@@ -291,12 +245,7 @@ class DataSyncService {
    * Get or generate session ID
    */
   getSessionId() {
-    let sessionId = localStorage.getItem('sessionId');
-    if (!sessionId) {
-      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('sessionId', sessionId);
-    }
-    return sessionId;
+    return localStorage.getItem('sessionId');
   }
 
   /**

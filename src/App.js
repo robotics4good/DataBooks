@@ -5,6 +5,7 @@ import LoginPage from "./LoginPage";
 import GamePage from "./GamePage";
 import ControlPanel from "./ControlPanel";
 import { UserLogProvider } from "./UserLog";
+import { db, ref, onValue } from "./firebase";
 import "./App.css";
 
 // Game configuration - centralized and maintainable
@@ -23,6 +24,18 @@ const GAME_CONFIG = {
 };
 
 const App = () => {
+  React.useEffect(() => {
+    // Fetch activeSessionId from Firebase on app load and store in localStorage
+    const sessionIdRef = ref(db, 'activeSessionId');
+    const unsubscribe = onValue(sessionIdRef, (snapshot) => {
+      const sessionId = snapshot.val();
+      if (sessionId) {
+        localStorage.setItem('sessionId', sessionId);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <UserLogProvider>
       <div className="App">

@@ -57,23 +57,35 @@ export const QuestionBox = ({ question, index, logAction, styles = {} }) => {
     answerRef.current = answer;
   }, [answer]);
 
-  // Log word count on unmount/interruption
-  useEffect(() => {
-    return () => {
-      const value = answerRef.current;
-      const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
-      logAction && logAction('journal_entry', `word_count: ${wordCount}`);
-    };
-  }, [logAction]);
+  // Log click_on event
+  const handleClickOn = () => {
+    let journalNumber = 1;
+    if (index >= ROUND_1_QUESTIONS.length + ROUND_2_QUESTIONS.length) journalNumber = 3;
+    else if (index >= ROUND_1_QUESTIONS.length) journalNumber = 2;
+    logAction && logAction('journal_entry', {
+      journalNumber,
+      action: 'click_on',
+      questionIndex: index
+    });
+  };
+
+  // Log click_off event with word count
+  const handleClickOff = (e) => {
+    const value = e.target.value;
+    const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
+    let journalNumber = 1;
+    if (index >= ROUND_1_QUESTIONS.length + ROUND_2_QUESTIONS.length) journalNumber = 3;
+    else if (index >= ROUND_1_QUESTIONS.length) journalNumber = 2;
+    logAction && logAction('journal_entry', {
+      journalNumber,
+      action: 'click_off',
+      questionIndex: index,
+      wordCount
+    });
+  };
 
   const handleAnswerChange = (e) => {
     setJournalAnswer(index, e.target.value);
-  };
-
-  const handleAnswerBlur = (e) => {
-    const value = e.target.value;
-    const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
-    logAction && logAction('journal_entry', `word_count: ${wordCount}`);
   };
 
   const defaultStyles = {
@@ -112,7 +124,8 @@ export const QuestionBox = ({ question, index, logAction, styles = {} }) => {
         placeholder="Your answer..."
         value={answer}
         onChange={handleAnswerChange}
-        onBlur={handleAnswerBlur}
+        onBlur={handleClickOff}
+        onFocus={handleClickOn}
         style={mergedStyles.textarea}
       />
     </div>
@@ -151,8 +164,15 @@ export const JournalQuestions = ({ logAction, styles = {} }) => {
     const timestamp = sanitizeForFirebase(rawTimestamp);
     // Build answers object: { questionNumber: answer, ... }
     const answers = {};
+    let answeredCount = 0;
+    let totalWords = 0;
     questions.forEach((q, i) => {
-      answers[offset + i + 1] = journalAnswers[offset + i] || "";
+      const ans = journalAnswers[offset + i] || "";
+      answers[offset + i + 1] = ans;
+      if (ans.trim()) {
+        answeredCount++;
+        totalWords += ans.trim().split(/\s+/).length;
+      }
     });
     // Save as a flat object under: sessions/{safeSessionId}/JournalEntries/{safeStudentId}/Journal{round}_{timestamp}
     await set(ref(db, `sessions/${safeSessionId}/JournalEntries/${safeStudentId}/Journal${round}_${timestamp}`), {
@@ -160,7 +180,14 @@ export const JournalQuestions = ({ logAction, styles = {} }) => {
       timestamp: rawTimestamp,
       answers
     });
-    // Optionally: show a confirmation or clear answers
+    // Log journal submit action
+    logAction && logAction('journal_entry', {
+      journalNumber: round,
+      action: 'submit',
+      answeredCount,
+      totalQuestions: questions.length,
+      totalWords
+    });
   };
 
   // Styling for visual hierarchy

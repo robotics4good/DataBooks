@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect, useEffect } from 'react';
 import AlienInvasion from "./games/AlienInvasion";
 import WhisperWeb from "./games/WhisperWeb";
 import LogisticsLeague from "./games/LogisticsLeague";
@@ -134,6 +134,15 @@ const GameLayout = ({ selectedGame, handleBackToGames, onToggleLayout, playerNam
   const { logAction } = useUserLog();
   const [leftWidth, setLeftWidth] = useState(38);
   const [isDragging, setIsDragging] = useState(false);
+  const prevPageRef = React.useRef(null);
+  const page = 'GameLayout';
+
+  useEffect(() => {
+    if (logAction && prevPageRef.current && prevPageRef.current !== page) {
+      logAction('navigation', { from: prevPageRef.current, to: page });
+    }
+    prevPageRef.current = page;
+  }, [page, logAction]);
 
   const handleMouseDown = (e) => {
     setIsDragging(true);

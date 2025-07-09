@@ -44,7 +44,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
         variables={variables}
         xVars={xVars}
         yVars={yVars}
-        personFilter={personFilter}
+        personFilter={cadetFilter}
         allowedMatrix={allowedMatrix}
         plotLabel={plotLabel}
         onPlotTypeChange={handlePlotTypeChange}
@@ -52,9 +52,9 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
         onYVariableToggle={handleYVariableToggle}
         onHistogramXVariableToggle={handleHistogramXVariableToggle}
         onPieVariableSelect={handlePieVariableSelect}
-        onPersonFilterToggle={handlePersonFilterToggle}
-        onSelectAllDevices={onSelectAllDevices}
-        onDeselectAllDevices={onDeselectAllDevices}
+        onPersonFilterToggle={handleCadetFilterToggle}
+        onSelectAllDevices={onSelectAllCadets}
+        onDeselectAllDevices={onDeselectAllCadets}
       />
     </div>
   );

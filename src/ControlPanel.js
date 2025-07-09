@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useLayoutEffect, useCallback } from
 import { useNavigate } from 'react-router-dom';
 import ESPDataPlot from './plots/ESPDataPlot';
 import { useESPData } from './hooks/useESPData';
+import { useUserLog } from './UserLog';
 // Removed useUserLog import - Control Panel actions should not be logged
 import { db, ref, get, set, remove, onValue, push } from './firebase';
 import { formatSanDiegoTime, formatSanDiegoTimeOnly, getSanDiegoTimezoneInfo, timeService, getNistTime } from './utils/timeUtils';
@@ -45,6 +46,7 @@ const SanDiegoClock = () => {
 
 const ControlPanel = () => {
   const navigate = useNavigate();
+  const { logAction } = useUserLog();
   
   const { 
     espData, 
@@ -141,21 +143,6 @@ const ControlPanel = () => {
       setESPError(err.message);
     } finally {
       setESPLoading(false);
-    }
-  };
-
-  const refreshWebsiteData = async () => {
-    setWebsiteLoading(true);
-    setWebsiteError(null);
-    try {
-      const userActionsRef = ref(db, 'userActions');
-      const userActionsSnap = await get(userActionsRef);
-      setWebsiteDataState({ userActions: userActionsSnap.val() || {} });
-      setWebsiteLastRefreshed(timeService.getCurrentTime());
-    } catch (err) {
-      setWebsiteError(err.message);
-    } finally {
-      setWebsiteLoading(false);
     }
   };
 
@@ -309,13 +296,15 @@ const ControlPanel = () => {
 
   // Toggle handler
   const handleMeetingToggle = async () => {
+    const nistTime = await getNistTime();
     if (!meetingActive) {
-      await logMeetingEvent('MEETINGSTART');
-      setMeetingActive(true);
+      logMeetingEvent('MEETINGSTART');
+      logAction && logAction('navigation', { action: 'meeting_start', timestamp: nistTime });
     } else {
-      await logMeetingEvent('MEETINGEND');
-      setMeetingActive(false);
+      logMeetingEvent('MEETINGEND');
+      logAction && logAction('navigation', { action: 'meeting_end', timestamp: nistTime });
     }
+    setMeetingActive(!meetingActive);
   };
 
   const renderESPDataTree = (data, level = 0) => {
@@ -594,42 +583,6 @@ const ControlPanel = () => {
     );
   };
 
-  // Website Data Section: show all userActions as raw JSON
-  const WebsiteDataSection = () => {
-    const userActions = websiteDataState.userActions || {};
-    const now = timeService.getCurrentTime();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    // Flatten and filter user actions from the past hour
-    const filteredActions = Object.entries(userActions)
-      .flatMap(([sessionId, actions]) =>
-        (Array.isArray(actions) ? actions : Object.values(actions)).map(action => ({ ...action, sessionId }))
-      )
-      .filter(action => {
-        const ts = action.timestamp ? new Date(action.timestamp) : null;
-        return ts && ts >= oneHourAgo && ts <= now;
-      });
-    return (
-      <div style={{ background: 'white', borderRadius: 8, padding: 20, marginBottom: 20, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <h2 style={{ margin: 0, color: '#333' }}>Website Data (Past Hour)</h2>
-          <button onClick={refreshWebsiteData} style={{ background: '#2a6ebb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 18px', fontWeight: 700, fontSize: 15, cursor: 'pointer' }} disabled={websiteLoading}>{websiteLoading ? 'Refreshing...' : 'Refresh'}</button>
-        </div>
-        <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>Last refreshed: {websiteLastRefreshed ? formatSanDiegoTime(websiteLastRefreshed) : 'Never'}</div>
-        {websiteError && <div style={{ color: '#b00', marginBottom: 8 }}>{websiteError}</div>}
-        {filteredActions.length === 0 ? (
-          <div style={{ color: '#888', textAlign: 'center', padding: '20px' }}>No Website data from the past hour. Click refresh to load.</div>
-        ) : (
-          filteredActions.map((action, idx) => (
-            <div key={idx} style={{ background: '#f8f9fa', borderRadius: 6, padding: 12, marginBottom: 12, fontFamily: 'monospace', fontSize: 13 }}>
-              <b>Session:</b> {action.sessionId}
-              <pre style={{ margin: 0 }}>{JSON.stringify(action, null, 2)}</pre>
-            </div>
-          ))
-        )}
-      </div>
-    );
-  };
-
   // Journal Data Section: show all journalEntries as raw JSON
   const JournalDataSection = () => {
     const journalEntries = journalDataState.journalEntries || {};
@@ -718,7 +671,6 @@ const ControlPanel = () => {
         <StreamingControls />
         <ESPTestingPanel />
         <ESPDataSection />
-        <WebsiteDataSection />
         <JournalDataSection />
       </div>
     </div>

@@ -9,6 +9,8 @@ import { timeService } from '../utils/timeUtils';
 
 // @param {string} sessionId - Unique identifier for this game session (passed from parent)
 const AlienInvasion = () => {
+  // Use sessionId from localStorage
+  const sessionId = localStorage.getItem('sessionId');
   const { logAction } = useUserLog();
   const { espData, loading, error, getPlotData } = useESPData();
   

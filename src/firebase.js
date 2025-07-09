@@ -1,6 +1,6 @@
 // src/firebase.js (for frontend React app using Realtime Database)
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, push, onValue, set, get, remove } from "firebase/database";
+import { getDatabase, ref, push, onValue, set, get, remove, update } from "firebase/database";
 
 // Firebase config from your .env file
 const firebaseConfig = {
@@ -38,4 +38,4 @@ const addDoc = (...args) => {
 export const getJournalEntryRef = (sessionId, round, studentId, timestamp) =>
   ref(db, `sessions/${sessionId}/JournalEntries/Journal${round}/${studentId}/${timestamp}`);
 
-export { db, ref, push, onValue, set, get, remove, getSessionRef, getSessionCollection, getSessionUserActivityRef, addDoc };
+export { db, ref, push, onValue, set, get, remove, update, getSessionRef, getSessionCollection, getSessionUserActivityRef, addDoc };

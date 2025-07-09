@@ -11,8 +11,8 @@ import HistogramPlot from '../plots/HistogramPlot';
 import { timeService } from '../utils/timeUtils';
 
 const WhisperWeb = () => {
-  // Generate unique session ID for this game instance
-  const sessionId = `whisper_web_${timeService.getCurrentTime().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
+  // Use sessionId from localStorage
+  const sessionId = localStorage.getItem('sessionId');
   
   // Game state
   const [gameState, setGameState] = useState('waiting');
@@ -113,8 +113,8 @@ const WhisperWeb = () => {
   };
 
   // Custom log action for WhisperWeb plots
-  const handlePlotAction = (action) => {
-    logAction(`WhisperWeb plot: ${action}`);
+  const handlePlotAction = (action, details = {}) => {
+    logAction('plot_interaction', { action, ...details });
   };
 
   // Transform ESP data for WhisperWeb visualization

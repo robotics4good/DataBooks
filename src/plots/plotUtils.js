@@ -69,16 +69,4 @@ export function toggleVariable(currentVars, variable, isSelected) {
   } else {
     return currentVars.filter(v => v !== variable);
   }
-}
-
-/**
- * Log plot action with label
- * @param {Function} logAction - Logging function
- * @param {string} plotLabel - Label for the plot
- * @param {string} action - Action description
- */
-export function logPlotAction(logAction, plotLabel, action) {
-  if (logAction) {
-    logAction(`${plotLabel} ${action}`);
-  }
 } 

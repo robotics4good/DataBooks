@@ -8,8 +8,8 @@ import HistogramPlot from '../plots/HistogramPlot';
 import { timeService } from '../utils/timeUtils';
 
 const RushHourRebels = () => {
-  // Generate unique session ID for this game instance
-  const sessionId = `rush_hour_rebels_${timeService.getCurrentTime().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
+  // Use sessionId from localStorage
+  const sessionId = localStorage.getItem('sessionId');
   
   // Game state
   const [gameState, setGameState] = useState('waiting');

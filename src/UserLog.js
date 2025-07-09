@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db, ref, push, set, onValue } from "./firebase";
+import { db, ref, push, set, onValue, update } from "./firebase";
 import dataSyncService from "./services/dataSyncService";
 import { timeService } from './utils/timeUtils';
 import { useRef } from 'react';
@@ -20,7 +20,6 @@ export const useUserLog = () => {
 export const UserLogProvider = ({ children }) => {
   const [userActions, setUserActions] = useState([]);
   const [loggingEnabled, setLoggingEnabled] = useState(false);
-  const [sessionId, setSessionId] = useState('unknown');
   const actionBatch = useRef([]);
   const batchTimer = useRef(null);
 
@@ -29,15 +28,8 @@ export const UserLogProvider = ({ children }) => {
 
   // Get the selected player from localStorage, fallback to 'S1' if not set
   const userId = sanitizeForFirebase(localStorage.getItem('selectedPlayer') || 'S1');
-
-  // Fetch current sessionId from Firebase
-  useEffect(() => {
-    const sessionIdRef = ref(db, 'activeSessionId');
-    const unsubscribe = onValue(sessionIdRef, (snapshot) => {
-      setSessionId(sanitizeForFirebase(snapshot.val() || 'unknown'));
-    });
-    return () => unsubscribe();
-  }, []);
+  // Always use sessionId from localStorage
+  const sessionId = sanitizeForFirebase(localStorage.getItem('sessionId') || 'unknown');
 
   // Batch flush function
   const flushBatch = async () => {
@@ -46,9 +38,9 @@ export const UserLogProvider = ({ children }) => {
       const updates = {};
       for (const action of actionBatch.current) {
         const timestamp = sanitizeForFirebase(action.timestamp);
-        updates[`sessions/${sessionId}/UserActions/${userId}/UserAction_${timestamp}`] = action;
+        updates[`sessions/${sessionId}/UserLogs/${userId}/${timestamp}`] = action;
       }
-      await set(ref(db), updates);
+      await update(ref(db), updates);
       actionBatch.current = [];
       console.log('🔥 Batch sent to Firebase');
     }
@@ -72,19 +64,20 @@ export const UserLogProvider = ({ children }) => {
   }, [sessionId, userId, loggingEnabled]);
 
   // Make logAction async to await the NIST time
+  // type: 'journal_entry', 'plot_interaction', 'navigation'
+  // details: JSON object with structured fields
   const logAction = async (type, details) => {
     if (!loggingEnabled) return;
-    // Only log critical actions
-    const isCritical = type === 'journal_entry' || type === 'submit' || type === 'navigation' || type === 'game_action';
-    if (!isCritical) return;
+    // Only allow structured types
+    const allowedTypes = ['journal_entry', 'plot_interaction', 'navigation'];
+    if (!allowedTypes.includes(type)) return;
     const timestampRaw = timeService.getCurrentTime().toISOString();
     const timestamp = sanitizeForFirebase(timestampRaw);
-    const cleanDetails = details ?? "";
     const action = {
       userId,
       timestamp: timestampRaw,
       type,
-      details: cleanDetails
+      details: details || {}
     };
     setUserActions(prev => {
       const newActions = [...prev, action];

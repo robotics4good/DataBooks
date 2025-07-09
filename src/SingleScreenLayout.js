@@ -178,12 +178,12 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
     if (activeTab === tabName) {
       return;
     }
-    logAction(`Switched to ${tabName} tab`);
+    logAction('navigation', { action: 'tab_change', from: activeTab, to: tabName });
     setActiveTab(tabName);
   };
 
   const handlePlotTypeChange = (plotNumber, newType) => {
-    logAction(`Plot ${plotNumber} type changed to ${newType}`);
+    logAction('plot_interaction', { action: 'type_changed', plotLabel: `DataPlots ${plotNumber}`, newPlotType: newType });
     if (plotNumber === 1) {
       setPlot1Type(newType);
     } else {
@@ -192,7 +192,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
   };
 
   const handleVariableChange = (plotNumber, axis, variable, checked) => {
-    logAction(`Plot ${plotNumber} ${axis}-variable "${variable}" ${checked ? 'selected' : 'deselected'}`);
+    logAction('plot_interaction', { action: 'variable_toggled', plotLabel: `DataPlots ${plotNumber}`, axis, variable, isSelected: checked });
     
     if (plotNumber === 1) {
       if (axis === 'X') {
