@@ -34,4 +34,8 @@ const addDoc = (...args) => {
   return Promise.resolve();
 };
 
+// Helper: get a ref for journal entries for a session, round, and studentId
+export const getJournalEntryRef = (sessionId, round, studentId, timestamp) =>
+  ref(db, `sessions/${sessionId}/JournalEntries/Journal${round}/${studentId}/${timestamp}`);
+
 export { db, ref, push, onValue, set, get, remove, getSessionRef, getSessionCollection, getSessionUserActivityRef, addDoc };

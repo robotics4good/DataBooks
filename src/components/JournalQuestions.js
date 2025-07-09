@@ -1,5 +1,6 @@
-import React, { useRef, useLayoutEffect } from 'react';
+import React, { useRef, useLayoutEffect, useEffect, useState } from 'react';
 import { useJournal } from "../JournalContext";
+import { db, ref, push, onValue, set } from '../firebase';
 
 // Journal questions configuration
 const ROUND_1_QUESTIONS = [
@@ -50,7 +51,21 @@ const AutoResizingTextarea = ({ value, onChange, onBlur, ...props }) => {
 export const QuestionBox = ({ question, index, logAction, styles = {} }) => {
   const { journalAnswers, setJournalAnswer } = useJournal();
   const answer = journalAnswers[index] || "";
-  
+  const answerRef = useRef(answer);
+
+  useEffect(() => {
+    answerRef.current = answer;
+  }, [answer]);
+
+  // Log word count on unmount/interruption
+  useEffect(() => {
+    return () => {
+      const value = answerRef.current;
+      const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
+      logAction && logAction('journal_entry', `word_count: ${wordCount}`);
+    };
+  }, [logAction]);
+
   const handleAnswerChange = (e) => {
     setJournalAnswer(index, e.target.value);
   };
@@ -58,7 +73,7 @@ export const QuestionBox = ({ question, index, logAction, styles = {} }) => {
   const handleAnswerBlur = (e) => {
     const value = e.target.value;
     const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
-    logAction(`journal_entry`, `Question ${index + 1} word_count: ${wordCount}`);
+    logAction && logAction('journal_entry', `word_count: ${wordCount}`);
   };
 
   const defaultStyles = {
@@ -109,6 +124,44 @@ export const JournalQuestions = ({ logAction, styles = {} }) => {
   const round1Offset = 0;
   const round2Offset = ROUND_1_QUESTIONS.length;
   const round3Offset = ROUND_1_QUESTIONS.length + ROUND_2_QUESTIONS.length;
+  const { journalAnswers } = useJournal();
+
+  // Get current sessionId from Firebase
+  const [sessionId, setSessionId] = useState("");
+  useEffect(() => {
+    const sessionIdRef = ref(db, 'activeSessionId');
+    const unsubscribe = onValue(sessionIdRef, (snapshot) => {
+      setSessionId(snapshot.val() || "");
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Helper to sanitize keys for Firebase paths
+  const sanitizeForFirebase = (str) => (str || '').replace(/[.#$\[\]:/]/g, '_');
+
+  const studentId = sanitizeForFirebase(localStorage.getItem('selectedPlayer') || 'unknown');
+
+  // Helper to submit a round's answers
+  const handleSubmitRound = async (round, offset, questions) => {
+    if (!sessionId || !studentId) return;
+    // Sanitize all dynamic keys for Firebase path
+    const safeSessionId = sanitizeForFirebase(sessionId);
+    const safeStudentId = sanitizeForFirebase(studentId);
+    const rawTimestamp = new Date().toISOString();
+    const timestamp = sanitizeForFirebase(rawTimestamp);
+    // Build answers object: { questionNumber: answer, ... }
+    const answers = {};
+    questions.forEach((q, i) => {
+      answers[offset + i + 1] = journalAnswers[offset + i] || "";
+    });
+    // Save as a flat object under: sessions/{safeSessionId}/JournalEntries/{safeStudentId}/Journal{round}_{timestamp}
+    await set(ref(db, `sessions/${safeSessionId}/JournalEntries/${safeStudentId}/Journal${round}_${timestamp}`), {
+      round,
+      timestamp: rawTimestamp,
+      answers
+    });
+    // Optionally: show a confirmation or clear answers
+  };
 
   // Styling for visual hierarchy
   const mainTitleStyle = {
@@ -153,6 +206,7 @@ export const JournalQuestions = ({ logAction, styles = {} }) => {
             />
           </div>
         ))}
+        <button onClick={() => handleSubmitRound(1, round1Offset, ROUND_1_QUESTIONS)} style={{marginTop: 16, fontWeight: 700, fontSize: 18, padding: '10px 24px', borderRadius: 8, background: '#43d675', color: '#fff', border: 'none', cursor: 'pointer'}}>Submit</button>
       </div>
 
       {/* Round 2 */}
@@ -170,6 +224,7 @@ export const JournalQuestions = ({ logAction, styles = {} }) => {
             />
           </div>
         ))}
+        <button onClick={() => handleSubmitRound(2, round2Offset, ROUND_2_QUESTIONS)} style={{marginTop: 16, fontWeight: 700, fontSize: 18, padding: '10px 24px', borderRadius: 8, background: '#43d675', color: '#fff', border: 'none', cursor: 'pointer'}}>Submit</button>
       </div>
 
       {/* Round 3 */}
@@ -187,6 +242,7 @@ export const JournalQuestions = ({ logAction, styles = {} }) => {
             />
           </div>
         ))}
+        <button onClick={() => handleSubmitRound(3, round3Offset, ROUND_3_QUESTIONS)} style={{marginTop: 16, fontWeight: 700, fontSize: 18, padding: '10px 24px', borderRadius: 8, background: '#43d675', color: '#fff', border: 'none', cursor: 'pointer'}}>Submit</button>
       </div>
     </div>
   );

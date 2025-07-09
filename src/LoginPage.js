@@ -33,24 +33,29 @@ const LoginPage = ({ gameConfig }) => {
   };
 
   // Player selection button component
-  const PlayerButton = ({ player, isSelected, onClick }) => (
-            <button
-      onClick={() => onClick(player)}
-              style={{
-                padding: "12px 16px",
-        border: isSelected ? "3px solid #667eea" : "2px solid #ddd",
-                borderRadius: "10px",
-        background: isSelected ? "#f0f4ff" : "white",
-        color: isSelected ? "#667eea" : "#333",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-        fontWeight: isSelected ? "bold" : "normal",
-                transition: "all 0.3s ease"
-              }}
-            >
-              {player}
-            </button>
-  );
+  const PlayerButton = ({ player, isSelected, onClick }) => {
+    // Special golden style for teacher
+    const isTeacher = player === 'teacher';
+    return (
+      <button
+        onClick={() => onClick(player)}
+        style={{
+          padding: '12px 16px',
+          border: isSelected ? (isTeacher ? '3px solid gold' : '3px solid #667eea') : (isTeacher ? '2px solid gold' : '2px solid #ddd'),
+          borderRadius: '10px',
+          background: isTeacher ? (isSelected ? 'linear-gradient(90deg, gold, orange)' : 'gold') : (isSelected ? '#f0f4ff' : 'white'),
+          color: isTeacher ? (isSelected ? '#fffbe8' : '#b8860b') : (isSelected ? '#667eea' : '#333'),
+          fontWeight: isSelected ? 'bold' : 'normal',
+          fontSize: '0.9rem',
+          cursor: 'pointer',
+          boxShadow: isTeacher ? '0 0 10px 2px gold' : undefined,
+          transition: 'all 0.3s ease',
+        }}
+      >
+        {isTeacher ? '👑 TEACHER' : player}
+      </button>
+    );
+  };
 
   // Action buttons component
   const ActionButtons = () => (
@@ -144,6 +149,12 @@ const LoginPage = ({ gameConfig }) => {
               onClick={handlePlayerSelect}
             />
           ))}
+          <PlayerButton
+            key="teacher"
+            player="teacher"
+            isSelected={selectedPlayer === 'teacher'}
+            onClick={handlePlayerSelect}
+          />
         </div>
 
         <ActionButtons />

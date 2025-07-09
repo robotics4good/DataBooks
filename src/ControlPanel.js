@@ -247,12 +247,17 @@ const ControlPanel = () => {
     setSessionLoading(true);
     try {
       const now = timeService.getCurrentTime();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
       const hour = now.getHours();
-      const sessionId = hour < 11 ? 'period1' : 'period2';
+      const period = hour < 12 ? 'period1' : 'period2';
+      const sessionId = `${year}${month}${day}${period}`;
       await set(ref(db, 'activeSessionId'), sessionId);
       await set(ref(db, `sessions/${sessionId}/meta`), {
         startedAt: now.toISOString(),
         createdBy: 'teacher',
+        createdAt: new Date().toISOString(),
       });
     } catch (err) {
       // Optionally log error
