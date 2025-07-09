@@ -178,12 +178,12 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
     if (activeTab === tabName) {
       return;
     }
-    logAction('navigation', { action: 'tab_change', from: activeTab, to: tabName });
+    logAction('navigation', 'tab_change', { from: activeTab, to: tabName });
     setActiveTab(tabName);
   };
 
   const handlePlotTypeChange = (plotNumber, newType) => {
-    logAction('plot_interaction', { action: 'type_changed', plotLabel: `DataPlots ${plotNumber}`, newPlotType: newType });
+    logAction('plot_interaction', 'type_changed', { plotLabel: `DataPlots ${plotNumber}`, newPlotType: newType });
     if (plotNumber === 1) {
       setPlot1Type(newType);
     } else {
@@ -192,7 +192,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
   };
 
   const handleVariableChange = (plotNumber, axis, variable, checked) => {
-    logAction('plot_interaction', { action: 'variable_toggled', plotLabel: `DataPlots ${plotNumber}`, axis, variable, isSelected: checked });
+    logAction('plot_interaction', 'variable_toggled', { plotLabel: `DataPlots ${plotNumber}`, axis, variable, isSelected: checked });
     
     if (plotNumber === 1) {
       if (axis === 'X') {
@@ -331,7 +331,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
               {/* Left Plot */}
               <div style={styles.plotContainer}>
                 <PlotComponent
-                  plotLabel="DataPlots 1"
+                  plotLabel="DataPlot 1"
                   data={[]}
                   logAction={logAction}
                 />
@@ -339,7 +339,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
               {/* Right Plot */}
               <div style={styles.plotContainer}>
                 <PlotComponent
-                  plotLabel="DataPlots 2"
+                  plotLabel="DataPlot 2"
                   data={[]}
                   logAction={logAction}
                 />

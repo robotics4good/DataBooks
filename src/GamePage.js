@@ -25,18 +25,16 @@ const GamePage = ({ gameConfig }) => {
   }
 
   const handleBackToGames = () => {
-    logAction('Clicked back to games');
+    logAction('navigation', 'back_to_games', {});
     navigate('/');
   };
 
   const handleToggleLayout = (source) => {
     const newLayout = !dualScreen;
     setDualScreen(newLayout);
-    logAction('navigation', {
-      action: 'toggle_screen',
+    logAction('navigation', 'toggle_screen', {
       to: newLayout ? 'dual' : 'single',
-      triggeredFrom: source,
-      timestamp: new Date().toISOString()
+      triggeredFrom: source
     });
   };
 

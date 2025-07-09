@@ -1,5 +1,5 @@
 // dataSyncService.js - Service for syncing journal and user action data to Firebase
-import { getCurrentSanDiegoTime } from '../utils/timeUtils';
+import { getSanDiegoISOString } from '../utils/timeUtils';
 import { db, ref, push, set } from '../firebase';
 import { timeService } from '../utils/timeUtils';
 
@@ -101,7 +101,7 @@ class DataSyncService {
   async performSync() {
     try {
       // Get current timestamp
-      const syncTimestamp = timeService.getCurrentTime();
+      const syncTimestamp = getSanDiegoISOString(timeService.getCurrentTime());
       // Get all data to sync
       const userActions = this.getUserActions();
       const journalData = this.getJournalData();
@@ -183,15 +183,15 @@ class DataSyncService {
       if (stored) {
         return {
           answers: JSON.parse(stored),
-          timestamp: timeService.getCurrentTime().toISOString()
+          timestamp: getSanDiegoISOString(timeService.getCurrentTime())
         };
       }
       
       // Fallback: return empty object
-      return { answers: {}, timestamp: timeService.getCurrentTime().toISOString() };
+      return { answers: {}, timestamp: getSanDiegoISOString(timeService.getCurrentTime()) };
     } catch (error) {
       console.warn('Failed to get journal data:', error);
-      return { answers: {}, timestamp: timeService.getCurrentTime().toISOString() };
+      return { answers: {}, timestamp: getSanDiegoISOString(timeService.getCurrentTime()) };
     }
   }
 
@@ -210,14 +210,14 @@ class DataSyncService {
       return {
         totalPackets: 0,
         uniqueStudents: 0,
-        lastUpdate: timeService.getCurrentTime().toISOString()
+        lastUpdate: getSanDiegoISOString(timeService.getCurrentTime())
       };
     } catch (error) {
       console.warn('Failed to get ESP data summary:', error);
       return {
         totalPackets: 0,
         uniqueStudents: 0,
-        lastUpdate: timeService.getCurrentTime().toISOString()
+        lastUpdate: getSanDiegoISOString(timeService.getCurrentTime())
       };
     }
   }
@@ -237,7 +237,7 @@ class DataSyncService {
         screenResolution: `${window.screen.width}x${window.screen.height}`,
         windowSize: `${window.innerWidth}x${window.innerHeight}`
       },
-      timestamp: timeService.getCurrentTime().toISOString()
+      timestamp: getSanDiegoISOString(timeService.getCurrentTime())
     };
   }
 
@@ -252,7 +252,7 @@ class DataSyncService {
    * Get user ID
    */
   getUserId() {
-    return localStorage.getItem('selectedPlayer') || 'S1';
+    return localStorage.getItem('selectedPlayer') || 'Luma';
   }
 
   /**
@@ -282,7 +282,7 @@ class DataSyncService {
       await set(newSyncRef, {
         ...data,
         firebaseKey: newSyncRef.key,
-        uploadedAt: timeService.getCurrentTime().toISOString()
+        uploadedAt: getSanDiegoISOString(timeService.getCurrentTime())
       });
       
       return newSyncRef.key;
@@ -299,7 +299,7 @@ class DataSyncService {
     try {
       localStorage.setItem('espDataSummary', JSON.stringify({
         ...summary,
-        lastUpdate: timeService.getCurrentTime().toISOString()
+        lastUpdate: getSanDiegoISOString(timeService.getCurrentTime())
       }));
     } catch (error) {
       console.warn('Failed to update ESP data summary:', error);

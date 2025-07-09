@@ -6,7 +6,7 @@ import { useESPData } from './hooks/useESPData';
 import { useUserLog } from './UserLog';
 // Removed useUserLog import - Control Panel actions should not be logged
 import { db, ref, get, set, remove, onValue, push } from './firebase';
-import { formatSanDiegoTime, formatSanDiegoTimeOnly, getSanDiegoTimezoneInfo, timeService, getNistTime } from './utils/timeUtils';
+import { formatSanDiegoTime, formatSanDiegoTimeOnly, getSanDiegoTimezoneInfo, timeService, getNistTime, getSanDiegoISOString } from './utils/timeUtils';
 import dataSyncService from './services/dataSyncService';
 import { JOURNAL_QUESTIONS } from './components/JournalQuestions';
 
@@ -43,6 +43,27 @@ const SanDiegoClock = () => {
   }, []);
   return <b style={{ fontWeight: 700 }}>{formatSanDiegoTime(now)}</b>;
 };
+
+// Add a simple toast notification component
+const Toast = ({ message, onClose }) => (
+  <div style={{
+    position: 'fixed',
+    top: 30,
+    right: 30,
+    background: '#222',
+    color: '#fff',
+    padding: '16px 28px',
+    borderRadius: 10,
+    fontWeight: 700,
+    fontSize: 18,
+    boxShadow: '0 2px 12px rgba(0,0,0,0.18)',
+    zIndex: 9999,
+    transition: 'opacity 0.3s',
+  }}>
+    {message}
+    <button onClick={onClose} style={{ marginLeft: 18, background: 'transparent', color: '#fff', border: 'none', fontSize: 20, cursor: 'pointer' }}>&times;</button>
+  </div>
+);
 
 const ControlPanel = () => {
   const navigate = useNavigate();
@@ -91,6 +112,7 @@ const ControlPanel = () => {
   // Meeting state
   const [meetingActive, setMeetingActive] = useState(false);
   const [meetingLoading, setMeetingLoading] = useState(false);
+  const [toast, setToast] = useState(null);
 
   // Manual refresh function for server data
   const refreshServerData = async () => {
@@ -233,6 +255,7 @@ const ControlPanel = () => {
   const handleStartSession = useCallback(async () => {
     setSessionLoading(true);
     try {
+      // Use San Diego time for session ID
       const now = timeService.getCurrentTime();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -242,9 +265,9 @@ const ControlPanel = () => {
       const sessionId = `${year}${month}${day}${period}`;
       await set(ref(db, 'activeSessionId'), sessionId);
       await set(ref(db, `sessions/${sessionId}/meta`), {
-        startedAt: now.toISOString(),
+        startedAt: getSanDiegoISOString(now),
         createdBy: 'teacher',
-        createdAt: new Date().toISOString(),
+        createdAt: getSanDiegoISOString(timeService.getCurrentTime()),
       });
     } catch (err) {
       // Optionally log error
@@ -257,54 +280,56 @@ const ControlPanel = () => {
     navigate('/');
   };
 
-  const handleManualSync = async () => {
-    try {
-      const result = await dataSyncService.performManualSync();
-      if (result.success) {
-        console.log('Manual sync completed successfully');
-      } else {
-        console.error('Manual sync failed:', result.error);
-      }
-    } catch (error) {
-      console.error('Manual sync error:', error);
-    }
-  };
-
   const handleToggleSync = () => {
     const isNowOn = dataSyncService.toggleSync();
     setSyncStatus(dataSyncService.getSyncStatus());
   };
 
-  // Log meeting event to Firebase
-  const logMeetingEvent = async (eventType) => {
-    setMeetingLoading(true);
+  // Helper to sanitize keys for Firebase paths
+  const sanitizeForFirebase = (str) => (str || '').replace(/[.#$\[\]:/]/g, '_');
+  const userId = 'teacher'; // Always 'teacher' for meeting logs
+
+  // Log meeting event to Firebase under sessions/{sessionId}/MeetingLogs/{timestamp}
+  const logMeetingEvent = async (eventType, rawTimestamp) => {
     try {
-      const nistTime = await getNistTime();
-      const timestamp = nistTime || new Date().toISOString();
-      // Store in a separate top-level 'meetingLogs' collection
-      await push(ref(db, 'meetingLogs'), {
+      const rawSessionId = localStorage.getItem('sessionId') || '';
+      const sessionId = sanitizeForFirebase(rawSessionId);
+      if (!sessionId) throw new Error('No sessionId found');
+      const timestamp = sanitizeForFirebase(rawTimestamp);
+      const meetingLogRef = ref(db, `sessions/${sessionId}/MeetingLogs/${timestamp}`);
+      await set(meetingLogRef, {
         event: eventType,
-        timestamp,
-        by: 'teacher',
+        timestamp: getSanDiegoISOString(new Date(rawTimestamp))
       });
     } catch (err) {
       // Optionally handle/log error
-    } finally {
-      setMeetingLoading(false);
     }
   };
 
-  // Toggle handler
+  // Optimized meeting toggle: use timeService.getCurrentTime() for instant, NIST-anchored timestamps
   const handleMeetingToggle = async () => {
-    const nistTime = await getNistTime();
-    if (!meetingActive) {
-      logMeetingEvent('MEETINGSTART');
-      logAction && logAction('navigation', { action: 'meeting_start', timestamp: nistTime });
-    } else {
-      logMeetingEvent('MEETINGEND');
-      logAction && logAction('navigation', { action: 'meeting_end', timestamp: nistTime });
+    if (meetingLoading) return;
+    setMeetingLoading(true);
+    try {
+      const now = timeService.getCurrentTime();
+      const rawTimestamp = getSanDiegoISOString(now);
+      if (!meetingActive) {
+        await logMeetingEvent('MEETINGSTART', rawTimestamp);
+        logAction && logAction('navigation', { action: 'meeting_start', timestamp: rawTimestamp });
+        setToast('Data meeting started!');
+        setMeetingActive(true);
+      } else {
+        await logMeetingEvent('MEETINGEND', rawTimestamp);
+        logAction && logAction('navigation', { action: 'meeting_end', timestamp: rawTimestamp });
+        setToast('Data meeting ended.');
+        setMeetingActive(false);
+      }
+    } catch (err) {
+      setToast('Error: Could not update data meeting status.');
+    } finally {
+      setTimeout(() => setToast(null), 3000);
+      setMeetingLoading(false);
     }
-    setMeetingActive(!meetingActive);
   };
 
   const renderESPDataTree = (data, level = 0) => {
@@ -474,7 +499,6 @@ const ControlPanel = () => {
         </div>
         <div style={{ display: 'flex', gap: 16 }}>
           <button onClick={handleToggleSync} style={{ background: loggingActive ? '#e74c3c' : '#43d675', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 32px', fontWeight: 800, fontSize: 20, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>{loggingActive ? 'STOP' : 'START'}</button>
-          <button onClick={handleManualSync} style={{ background: '#7c8cf8', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 24px', fontWeight: 700, fontSize: 18, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>Manual Sync</button>
         </div>
       </div>
       <div style={{ background: '#fffbe6', borderRadius: 8, padding: '16px 18px', margin: '18px 0 10px 0', border: '1px solid #ffe58f', color: '#8d6a00', fontWeight: 600, fontSize: 17 }}>
@@ -637,6 +661,7 @@ const ControlPanel = () => {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <TopBar />
       </div>
@@ -658,14 +683,32 @@ const ControlPanel = () => {
               boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
               transition: 'background 0.2s',
               marginRight: 16,
+              position: 'relative',
+              minWidth: 220
             }}
           >
-            {meetingActive ? 'End Data Meeting' : 'Start Data Meeting'}
+            {meetingLoading ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <span className="spinner" style={{
+                  width: 22, height: 22, border: '3px solid #fff', borderTop: '3px solid #888', borderRadius: '50%', display: 'inline-block', marginRight: 12, animation: 'spin 1s linear infinite'
+                }} />
+                {meetingActive ? 'Ending...' : 'Starting...'}
+              </span>
+            ) : (
+              meetingActive ? 'End Data Meeting' : 'Start Data Meeting'
+            )}
           </button>
           <span style={{ fontWeight: 700, fontSize: 20, color: meetingActive ? '#e74c3c' : '#43d675' }}>
             Data Meeting {meetingActive ? 'Active' : 'Inactive'}
           </span>
         </div>
+        {/* Add spinner keyframes */}
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
         <SessionManager />
         <HeaderSection />
         <StreamingControls />

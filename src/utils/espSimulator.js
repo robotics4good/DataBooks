@@ -1,7 +1,7 @@
 // espSimulator.js - Browser-based ESP device simulation utility
 
 import { db, ref, push, set } from '../firebase';
-import { timeService } from './timeUtils';
+import { timeService, getSanDiegoISOString } from './timeUtils';
 
 class ESPSimulator {
   constructor() {
@@ -19,14 +19,14 @@ class ESPSimulator {
     
     return {
       id: deviceId,
-      timestamp: timeService.getCurrentTime().toISOString(),
+      timestamp: getSanDiegoISOString(timeService.getCurrentTime()),
       buttonA: Math.random() > 0.7 ? 1 : 0,
       buttonB: Math.random() > 0.8 ? 1 : 0,
       status: Math.random(),
       beaconArray: Math.random() > 0.9 ? 1 : 0,
       totalButtons: Math.floor(Math.random() * 3),
       hasInteraction: Math.random() > 0.8,
-      receivedAt: timeService.getCurrentTime().toISOString(),
+      receivedAt: getSanDiegoISOString(timeService.getCurrentTime()),
       sessionId: `browser-session-${timeService.getCurrentTime().getTime()}`
     };
   }
@@ -158,14 +158,14 @@ class ESPSimulator {
     
     return {
       id: deviceId,
-      timestamp: timeService.getCurrentTime().toISOString(),
+      timestamp: getSanDiegoISOString(timeService.getCurrentTime()),
       buttonA: buttonAPressed ? 1 : 0,
       buttonB: buttonBPressed ? 1 : 0,
       status: status,
       beaconArray: beaconActive ? 1 : 0,
       totalButtons: (buttonAPressed ? 1 : 0) + (buttonBPressed ? 1 : 0),
       hasInteraction: buttonAPressed || buttonBPressed || beaconActive,
-      receivedAt: timeService.getCurrentTime().toISOString(),
+      receivedAt: getSanDiegoISOString(timeService.getCurrentTime()),
       sessionId: `browser-session-${timeService.getCurrentTime().getTime()}`
     };
   }

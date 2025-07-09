@@ -196,8 +196,7 @@ const GameLayout = ({ selectedGame, handleBackToGames, onToggleLayout, playerNam
         </div>
         {/* Right: DataPlots (only one plot) */}
         <div style={styles.rightPanel}>
-          {/* TODO: Pass real data here, not just an empty array. For now, use a placeholder prop for data. */}
-          <PlotComponent plotLabel="DataPlots" data={null} logAction={logAction} />
+          <PlotComponent plotLabel="DataPlot 3" data={null} logAction={logAction} />
         </div>
       </div>
     </div>

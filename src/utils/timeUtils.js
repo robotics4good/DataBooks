@@ -1,5 +1,7 @@
 // timeUtils.js - Utility functions for NIST time API and San Diego timezone handling
 
+import { format, toZonedTime } from 'date-fns-tz';
+
 /**
  * Fetch current time from NIST time servers
  * Uses the official NIST time API
@@ -155,11 +157,27 @@ export function isSanDiegoDST() {
   return tzInfo.isDST;
 }
 
+/**
+ * Get ISO string in San Diego time with offset (e.g., 2024-07-09T05:29:00.000-07:00)
+ * @param {Date} date - JS Date object (default: now)
+ * @returns {string} - ISO 8601 string in San Diego time
+ */
+export function getSanDiegoISOString(date = new Date()) {
+  const tz = 'America/Los_Angeles';
+  const zoned = toZonedTime(date, tz);
+  // 'yyyy-MM-ddTHH:mm:ss.SSSXXX' gives ISO 8601 with offset
+  return format(zoned, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", { timeZone: tz });
+}
+
 // --- TimeService Singleton for 15-min NIST/US Pacific time caching ---
 class TimeService {
   constructor() {
-    this.nistTime = null; // Date object
-    this.lastSync = null; // Date object
+    /**
+     * The anchor time, always stored as a Date object in San Diego time (America/Los_Angeles),
+     * NIST-anchored and never UTC. All time math is done in San Diego time.
+     */
+    this.sanDiegoAnchor = null; // Date object in San Diego time
+    this.lastSync = null; // Date object (local system time when anchor was set)
     this.syncInterval = null;
     this.isSyncing = false;
     this.listeners = [];
@@ -170,12 +188,14 @@ class TimeService {
     this.isSyncing = true;
     try {
       const nistTimeStr = await getNistTime();
-      this.nistTime = convertToSanDiegoTime(nistTimeStr);
+      // Convert to San Diego time immediately and store as anchor
+      const sanDiegoAnchor = convertToSanDiegoTime(nistTimeStr);
+      this.sanDiegoAnchor = sanDiegoAnchor;
       this.lastSync = new Date();
       this.notifyListeners();
     } catch (err) {
-      // fallback: use local time
-      this.nistTime = convertToSanDiegoTime(new Date().toISOString());
+      // fallback: use local time, but still convert to San Diego
+      this.sanDiegoAnchor = convertToSanDiegoTime(new Date().toISOString());
       this.lastSync = new Date();
       this.notifyListeners();
     } finally {
@@ -190,12 +210,16 @@ class TimeService {
     this.syncInterval = setInterval(() => this.fetchNistTime(), 600000);
   }
 
+  /**
+   * Returns the current San Diego time as a Date object, NIST-anchored.
+   * All time math is done in San Diego time, so this is always correct.
+   */
   getCurrentTime() {
-    if (!this.nistTime || !this.lastSync) return convertToSanDiegoTime(new Date().toISOString());
+    if (!this.sanDiegoAnchor || !this.lastSync) return convertToSanDiegoTime(new Date().toISOString());
     const now = new Date();
     const elapsed = now.getTime() - this.lastSync.getTime();
-    // Add elapsed ms to the base San Diego time
-    return new Date(this.nistTime.getTime() + elapsed);
+    // Add elapsed ms to the San Diego anchor
+    return new Date(this.sanDiegoAnchor.getTime() + elapsed);
   }
 
   // Optional: allow components to listen for time updates

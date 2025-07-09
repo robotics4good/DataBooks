@@ -1,6 +1,8 @@
 import React, { useRef, useLayoutEffect, useEffect, useState } from 'react';
 import { useJournal } from "../JournalContext";
 import { db, ref, push, onValue, set } from '../firebase';
+import { timeService } from '../utils/timeUtils';
+import { formatSanDiegoTime, getSanDiegoISOString } from '../utils/timeUtils';
 
 // Journal questions configuration
 const ROUND_1_QUESTIONS = [
@@ -160,7 +162,7 @@ export const JournalQuestions = ({ logAction, styles = {} }) => {
     // Sanitize all dynamic keys for Firebase path
     const safeSessionId = sanitizeForFirebase(sessionId);
     const safeStudentId = sanitizeForFirebase(studentId);
-    const rawTimestamp = new Date().toISOString();
+    const rawTimestamp = getSanDiegoISOString(timeService.getCurrentTime());
     const timestamp = sanitizeForFirebase(rawTimestamp);
     // Build answers object: { questionNumber: answer, ... }
     const answers = {};
@@ -273,6 +275,4 @@ export const JournalQuestions = ({ logAction, styles = {} }) => {
       </div>
     </div>
   );
-};
-
-export default JournalQuestions; 
+}; 

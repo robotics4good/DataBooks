@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, ref, push, set, onValue, update } from "./firebase";
 import dataSyncService from "./services/dataSyncService";
-import { timeService } from './utils/timeUtils';
+import { timeService, getSanDiegoISOString } from './utils/timeUtils';
 import { useRef } from 'react';
 
 const UserLogContext = createContext();
@@ -26,8 +26,8 @@ export const UserLogProvider = ({ children }) => {
   // Helper to sanitize keys for Firebase paths
   const sanitizeForFirebase = (str) => (str || '').replace(/[.#$\[\]:/]/g, '_');
 
-  // Get the selected player from localStorage, fallback to 'S1' if not set
-  const userId = sanitizeForFirebase(localStorage.getItem('selectedPlayer') || 'S1');
+  // Get the selected player from localStorage, fallback to 'Luma' if not set
+  const userId = sanitizeForFirebase(localStorage.getItem('selectedPlayer') || 'Luma');
   // Always use sessionId from localStorage
   const sessionId = sanitizeForFirebase(localStorage.getItem('sessionId') || 'unknown');
 
@@ -65,26 +65,24 @@ export const UserLogProvider = ({ children }) => {
 
   // Make logAction async to await the NIST time
   // type: 'journal_entry', 'plot_interaction', 'navigation'
-  // details: JSON object with structured fields
-  const logAction = async (type, details) => {
+  // action: string, timestamp: ISO8601 string, details: object
+  const logAction = async (type, action, details = {}) => {
     if (!loggingEnabled) return;
-    // Only allow structured types
     const allowedTypes = ['journal_entry', 'plot_interaction', 'navigation'];
     if (!allowedTypes.includes(type)) return;
-    const timestampRaw = timeService.getCurrentTime().toISOString();
-    const timestamp = sanitizeForFirebase(timestampRaw);
-    const action = {
-      userId,
-      timestamp: timestampRaw,
+    const timestampRaw = getSanDiegoISOString(timeService.getCurrentTime());
+    const logPacket = {
       type,
+      action,
+      timestamp: timestampRaw,
       details: details || {}
     };
     setUserActions(prev => {
-      const newActions = [...prev, action];
+      const newActions = [...prev, logPacket];
       dataSyncService.updateUserActions(newActions);
       return newActions;
     });
-    actionBatch.current.push(action);
+    actionBatch.current.push(logPacket);
     if (actionBatch.current.length >= BATCH_SIZE) {
       await flushBatch();
     }
