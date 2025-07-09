@@ -32,13 +32,10 @@ const GamePage = ({ gameConfig }) => {
   const handleToggleLayout = (source) => {
     const newLayout = !dualScreen;
     setDualScreen(newLayout);
-    logAction({
-      type: 'navigation',
+    logAction('navigation', {
       action: 'toggle_screen',
-      details: {
-        to: newLayout ? 'dual' : 'single',
-        triggeredFrom: source
-      },
+      to: newLayout ? 'dual' : 'single',
+      triggeredFrom: source,
       timestamp: new Date().toISOString()
     });
   };
