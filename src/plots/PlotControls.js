@@ -1,4 +1,3 @@
-// PlotControls.js - Component for plot control UI
 import React from 'react';
 import styles from './PlotComponent.module.css';
 import { playerNames } from './plotConfigs';

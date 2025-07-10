@@ -52,8 +52,12 @@ export function initializeCadetFilter(playerNames) {
  * @returns {Array} - Filtered data
  */
 export function filterData(data, xVars, yVars, cadetFilter) {
-  // TODO: implement filtering based on xVars, yVars, cadetFilter
-  return data;
+  if (!Array.isArray(data) || !cadetFilter || Object.keys(cadetFilter).length === 0) return data;
+  const selectedIds = Object.entries(cadetFilter)
+    .filter(([id, selected]) => selected)
+    .map(([id]) => id);
+  if (selectedIds.length === 0) return data;
+  return data.filter(record => selectedIds.includes(record.device_id));
 }
 
 /**
