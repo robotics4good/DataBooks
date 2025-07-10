@@ -6,7 +6,7 @@ import { useESPData } from './hooks/useESPData';
 import { useUserLog } from './UserLog';
 // Removed useUserLog import - Control Panel actions should not be logged
 import { db, ref, get, set, remove, onValue, push } from './firebase';
-import { formatSanDiegoTime, formatSanDiegoTimeOnly, getSanDiegoTimezoneInfo, timeService, getNistTime, getSanDiegoISOString } from './utils/timeUtils';
+import { formatSanDiegoTime, formatSanDiegoTimeOnly, getSanDiegoTimezoneInfo, timeService, getSanDiegoISOString } from './utils/timeUtils';
 import { JOURNAL_QUESTIONS } from './components/JournalQuestions';
 
 const cardStyle = {
@@ -280,15 +280,9 @@ const ControlPanel = () => {
 
       // Fetch NIST time
       try {
-        const resp = await fetch('http://worldtimeapi.org/api/timezone/America/Los_Angeles');
-        const nistData = await resp.json();
-        if (nistData && nistData.datetime) {
-          setLastUpdated(new Date(nistData.datetime));
-        } else {
-          setLastUpdated(new Date()); // fallback
-        }
+        setLastUpdated(new Date()); // Use local device time only
       } catch {
-        setLastUpdated(new Date()); // fallback
+        setLastUpdated(new Date()); // fallback (should never hit)
       }
     } catch (err) {
       console.error("Error fetching server data:", err);
